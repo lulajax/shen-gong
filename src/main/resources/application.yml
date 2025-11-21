@@ -5,18 +5,6 @@ spring:
   profiles:
     active: dev
 
-  datasource:
-    url: jdbc:mysql://localhost:3306/shengong?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
-    password: your_password
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-
   jpa:
     hibernate:
       ddl-auto: validate
@@ -50,7 +38,7 @@ spring:
 langchain4j:
   google-ai-gemini:
     api-key: ${GEMINI_API_KEY}
-    model-name: gemini-2.0-flash-exp
+    model-name: gemini-2.5-flash
     temperature: 0.7
     max-tokens: 8192
     timeout: 60s
@@ -66,6 +54,13 @@ langchain4j:
     timeout: 60s
     log-requests: true
     log-responses: true
+
+  # HTTP/SOCKS 代理配置
+  proxy:
+    enabled: true              # 是否启用代理
+    host: 127.0.0.1            # 代理主机
+    port: 10808                 # 代理端口
+    type: HTTP                 # 代理类型: HTTP 或 SOCKS
 
 # Agent Runtime Configuration
 agent-runtime:

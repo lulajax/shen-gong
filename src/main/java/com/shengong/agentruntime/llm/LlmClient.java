@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * LLM 客户端封装 - 支持 Google Gemini 多模态
+ * LLM 客户端封装 - 支持 Google Gemini 多模态和代理配置
  *
  * @author 神工团队
  * @since 1.0.0
@@ -26,12 +26,23 @@ public class LlmClient {
 
     public LlmClient(
             @Value("${langchain4j.google-ai-gemini.api-key}") String apiKey,
-            @Value("${langchain4j.google-ai-gemini.model-name:gemini-2.0-flash-exp}") String modelName,
+            @Value("${langchain4j.google-ai-gemini.model-name:gemini-2.5-flash}") String modelName,
             @Value("${langchain4j.google-ai-gemini.temperature:0.7}") Double temperature,
             @Value("${langchain4j.google-ai-gemini.max-tokens:8192}") Integer maxTokens,
-            @Value("${langchain4j.google-ai-gemini.timeout:60s}") Duration timeout
+            @Value("${langchain4j.google-ai-gemini.timeout:60s}") Duration timeout,
+            @Value("${langchain4j.proxy.enabled:false}") Boolean proxyEnabled,
+            @Value("${langchain4j.proxy.host:}") String proxyHost,
+            @Value("${langchain4j.proxy.port:0}") Integer proxyPort,
+            @Value("${langchain4j.proxy.type:HTTP}") String proxyType
     ) {
         this.modelName = modelName;
+
+        // 设置系统代理（如果启用）
+        if (proxyEnabled && proxyHost != null && !proxyHost.isEmpty() && proxyPort > 0) {
+            configureSystemProxy(proxyHost, proxyPort, proxyType);
+        }
+
+        // 构建 Gemini 模型
         this.model = GoogleAiGeminiChatModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)
@@ -41,8 +52,30 @@ public class LlmClient {
                 .logRequestsAndResponses(true)
                 .build();
 
-        log.info("LLM Client initialized: model={}, temperature={}, maxTokens={}",
-                modelName, temperature, maxTokens);
+        log.info("LLM Client initialized: model={}, temperature={}, maxTokens={}, proxyEnabled={}",
+                modelName, temperature, maxTokens, proxyEnabled);
+    }
+
+    /**
+     * 配置系统代理
+     */
+    private void configureSystemProxy(String host, Integer port, String type) {
+        if ("SOCKS".equalsIgnoreCase(type)) {
+            // SOCKS 代理
+            System.setProperty("socksProxyHost", host);
+            System.setProperty("socksProxyPort", String.valueOf(port));
+            log.info("LLM Client SOCKS proxy configured: host={}, port={}", host, port);
+        } else {
+            // HTTP/HTTPS 代理
+            System.setProperty("http.proxyHost", host);
+            System.setProperty("http.proxyPort", String.valueOf(port));
+            System.setProperty("https.proxyHost", host);
+            System.setProperty("https.proxyPort", String.valueOf(port));
+            log.info("LLM Client HTTP/HTTPS proxy configured: host={}, port={}", host, port);
+        }
+
+        // 设置不需要代理的主机（可选）
+        System.setProperty("http.nonProxyHosts", "localhost|127.0.0.1|*.local");
     }
 
     /**
