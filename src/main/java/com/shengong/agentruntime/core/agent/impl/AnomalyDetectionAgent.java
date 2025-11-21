@@ -32,6 +32,10 @@ public class AnomalyDetectionAgent implements Agent {
     public String name() {
         return AGENT_TYPE.getName();
     }
+    @Override
+    public String taskType() {
+        return AGENT_TYPE.getTaskType();
+    }
 
     @Override
     public List<String> domains() {
@@ -44,15 +48,30 @@ public class AnomalyDetectionAgent implements Agent {
     }
 
     @Override
+    public List<String> requiredParams() {
+        return List.of("orders");
+    }
+
+    @Override
+    public Map<String, String> paramDescriptions() {
+        return Map.of(
+            "orders", "订单数据列表，包含订单状态、处理时间等信息"
+        );
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public AgentResult handle(AgentTask task) {
         log.info("AnomalyDetectionAgent handling task: {}", task.getTaskId());
 
         try {
-            Map<String, Object> orders = task.getContextValue("orders");
-            if (orders == null) {
-                return AgentResult.error("Missing orders from previous step");
+            // 统一参数验证
+            AgentResult validationError = validateParams(task);
+            if (validationError != null) {
+                return validationError;
             }
+
+            Map<String, Object> orders = task.getParam("orders");
 
             // 计算统计指标
             Map<String, Object> statistics = calculateStatistics(orders);

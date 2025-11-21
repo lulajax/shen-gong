@@ -27,6 +27,11 @@ public class LiveDataPrepAgent implements Agent {
     public String name() {
         return AGENT_TYPE.getName();
     }
+    
+    @Override
+    public String taskType() {
+        return AGENT_TYPE.getTaskType();
+    }
 
     @Override
     public List<String> domains() {
@@ -39,20 +44,31 @@ public class LiveDataPrepAgent implements Agent {
     }
 
     @Override
+    public List<String> requiredParams() {
+        return List.of("rawData");
+    }
+
+    @Override
+    public Map<String, String> paramDescriptions() {
+        return Map.of(
+            "rawData", "原始直播数据，通常来自 LiveDataFetchAgent 的输出"
+        );
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public AgentResult handle(AgentTask task) {
         log.info("LiveDataPrepAgent handling task: {}", task.getTaskId());
 
         try {
-            // 从上下文或 payload 中获取原始数据
-            Map<String, Object> rawData = task.getContextValue("rawData");
-            if (rawData == null) {
-                rawData = task.getPayloadValue("rawData");
+            // 统一参数验证
+            AgentResult validationError = validateParams(task);
+            if (validationError != null) {
+                return validationError;
             }
 
-            if (rawData == null) {
-                return AgentResult.error("Missing rawData from previous step");
-            }
+            // 从上下文或 payload 中获取原始数据
+            Map<String, Object> rawData = task.getParam("rawData");
 
             // 模拟计算指标
             Map<String, Object> metrics = calculateMetrics(rawData);

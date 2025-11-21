@@ -27,7 +27,12 @@ public class LiveReportAgent implements Agent {
     public String name() {
         return AGENT_TYPE.getName();
     }
-
+    
+    @Override
+    public String taskType() {
+        return AGENT_TYPE.getTaskType();
+    }
+    
     @Override
     public List<String> domains() {
         return AGENT_TYPE.getDomains();
@@ -39,18 +44,33 @@ public class LiveReportAgent implements Agent {
     }
 
     @Override
+    public List<String> requiredParams() {
+        return List.of("analysis", "metrics");
+    }
+
+    @Override
+    public Map<String, String> paramDescriptions() {
+        return Map.of(
+            "analysis", "分析结果，包含 findings、rootCauses、suggestions 等",
+            "metrics", "直播指标数据"
+        );
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public AgentResult handle(AgentTask task) {
         log.info("LiveReportAgent handling task: {}", task.getTaskId());
 
         try {
-            // 获取分析数据
-            Map<String, Object> analysis = task.getContextValue("analysis");
-            Map<String, Object> metrics = task.getContextValue("metrics");
-
-            if (analysis == null || metrics == null) {
-                return AgentResult.error("Missing analysis or metrics from previous steps");
+            // 统一参数验证
+            AgentResult validationError = validateParams(task);
+            if (validationError != null) {
+                return validationError;
             }
+
+            // 获取分析数据
+            Map<String, Object> analysis = task.getParam("analysis");
+            Map<String, Object> metrics = task.getParam("metrics");
 
             // 生成报告
             Map<String, Object> report = generateReport(analysis, metrics, task);

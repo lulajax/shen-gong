@@ -32,7 +32,12 @@ public class RootCauseAgent implements Agent {
     public String name() {
         return AGENT_TYPE.getName();
     }
-
+    
+    @Override
+    public String taskType() {
+        return AGENT_TYPE.getTaskType();
+    }
+    
     @Override
     public List<String> domains() {
         return AGENT_TYPE.getDomains();
@@ -44,13 +49,37 @@ public class RootCauseAgent implements Agent {
     }
 
     @Override
+    public List<String> requiredParams() {
+        return List.of("anomalies");
+    }
+
+    @Override
+    public List<String> optionalParams() {
+        return List.of("statistics");
+    }
+
+    @Override
+    public Map<String, String> paramDescriptions() {
+        return Map.of(
+            "anomalies", "异常列表，来自 AnomalyDetectionAgent 的输出",
+            "statistics", "统计数据，包含各类指标"
+        );
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public AgentResult handle(AgentTask task) {
         log.info("RootCauseAgent handling task: {}", task.getTaskId());
 
         try {
-            List<Map<String, Object>> anomalies = task.getContextValue("anomalies");
-            Map<String, Object> statistics = task.getContextValue("statistics");
+            // 统一参数验证（对于可选的 statistics，不会报错）
+            AgentResult validationError = validateParams(task);
+            if (validationError != null) {
+                return validationError;
+            }
+
+            List<Map<String, Object>> anomalies = task.getParam("anomalies");
+            Map<String, Object> statistics = task.getParam("statistics", Map.of());
 
             if (anomalies == null || anomalies.isEmpty()) {
                 return AgentResult.ok("No anomalies found, no root cause analysis needed", Map.of(

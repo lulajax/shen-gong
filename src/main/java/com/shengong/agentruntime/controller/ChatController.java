@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 对话式 AI 控制器 - 支持多模态
@@ -38,6 +39,7 @@ public class ChatController {
     private final IntelligentAgentRouter intelligentRouter;
     private final RouterAgentService routerAgentService;
     private final LlmClient llmClient;
+    private final com.shengong.agentruntime.service.AgentRegistry agentRegistry;
 
     /**
      * 智能对话接口 - 自动路由到合适的 Agent
@@ -49,7 +51,7 @@ public class ChatController {
                 request.getUserId(), request.getMessage());
 
         try {
-            // 1. 智能路由 - 根据用户输入创建 AgentTask
+            // 1. 智能路由（自动参数收集） - 根据用户输入创建 AgentTask
             AgentTask task = intelligentRouter.routeFromUserInput(
                     request.getMessage(),
                     request.getContext()
@@ -59,6 +61,49 @@ public class ChatController {
             task.setUserId(request.getUserId());
             if (request.getSessionId() != null) {
                 task.putContext("sessionId", request.getSessionId());
+            }
+
+            // 检查参数收集是否失败
+            Boolean paramValidationFailed = task.getContextValue("paramCollectionFailed");
+            if (Boolean.TRUE.equals(paramValidationFailed)) {
+                List<String> missingParams = task.getContextValue("missingParams");
+
+                // 获取选中的 Agent
+                Map<String, Object> routingInfo = task.getContextValue("routingInfo");
+                String agentName = routingInfo != null ?
+                    (String) routingInfo.get("selectedAgent") : null;
+
+                // 生成友好的参数补充提示
+                String userPrompt = "";
+                if (agentName != null) {
+                    com.shengong.agentruntime.core.agent.Agent agent =
+                        agentRegistry.findAgent(task.getTaskType(), task.getDomain()).orElse(null);
+                    if (agent != null) {
+                        userPrompt = intelligentRouter.generateParamPrompt(agent, missingParams);
+                    }
+                }
+
+                // 如果无法生成友好提示，使用默认格式
+                if (userPrompt.isEmpty()) {
+                    userPrompt = "缺少必填参数: " + String.join(", ", missingParams) +
+                               "。请提供这些参数后重试。";
+                }
+
+                ChatResponse errorResponse = new ChatResponse();
+                errorResponse.setMessage(userPrompt);
+                errorResponse.setSuccess(false);
+                errorResponse.setData(Map.of(
+                    "missingParams", missingParams,
+                    "paramCollectionFailed", true,
+                    "needMoreInfo", true,
+                    "taskContext", Map.of(
+                        "taskType", task.getTaskType(),
+                        "domain", task.getDomain(),
+                        "partialPayload", task.getPayload()
+                    )
+                ));
+
+                return ResponseEntity.ok(errorResponse);
             }
 
             // 2. 执行 Agent
@@ -235,12 +280,44 @@ public class ChatController {
                 request.getUserId(), request.getMessages().size());
 
         try {
-            // 1. 从对话历史中智能路由
-            AgentTask task = intelligentRouter.routeFromConversation(request.getMessages());
+            // 1. 从对话历史中智能路由（自动参数收集）
+            AgentTask task = intelligentRouter.routeFromUserInput(
+                    request.getMessages().stream()
+                            .filter(msg -> "user".equals(msg.getRole()))
+                            .map(IntelligentAgentRouter.ConversationMessage::getContent)
+                            .collect(Collectors.joining("\n")),
+                    Map.of("conversationHistory", request.getMessages())
+            );
 
             // 设置用户信息
             task.setUserId(request.getUserId());
             task.putContext("sessionId", request.getSessionId());
+
+            // 检查参数收集是否失败
+            Boolean paramValidationFailed = task.getContextValue("paramCollectionFailed");
+            if (Boolean.TRUE.equals(paramValidationFailed)) {
+                List<String> missingParams = task.getContextValue("missingParams");
+
+                // 生成友好提示
+                String userPrompt = "";
+                com.shengong.agentruntime.core.agent.Agent agent =
+                    agentRegistry.findAgent(task.getTaskType(), task.getDomain()).orElse(null);
+                if (agent != null) {
+                    userPrompt = intelligentRouter.generateParamPrompt(agent, missingParams);
+                } else {
+                    userPrompt = "缺少必填参数: " + String.join(", ", missingParams);
+                }
+
+                ChatResponse errorResponse = new ChatResponse();
+                errorResponse.setMessage(userPrompt);
+                errorResponse.setSuccess(false);
+                errorResponse.setData(Map.of(
+                    "missingParams", missingParams,
+                    "needMoreInfo", true
+                ));
+
+                return ResponseEntity.ok(errorResponse);
+            }
 
             // 2. 执行 Agent
             AgentResult result = routerAgentService.route(task);

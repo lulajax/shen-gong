@@ -19,7 +19,7 @@ public enum AgentType {
     GENERIC_ANALYSIS(
             "GenericAnalysisAgent",
             List.of("generic"),
-            "analysis",
+            "generic_analysis",
             "Generic analysis agent powered by LLM"
     ),
 
@@ -59,7 +59,7 @@ public enum AgentType {
     LIVE_DATA_FETCH(
             "LiveDataFetchAgent",
             List.of("live"),
-            "analysis_report",
+            "live_data_fetch",
             "Fetch live streaming data from external services"
     ),
 
@@ -69,7 +69,7 @@ public enum AgentType {
     LIVE_DATA_PREP(
             "LiveDataPrepAgent",
             List.of("live"),
-            "analysis_report",
+            "live_data_prep",
             "Calculate key metrics from live streaming data"
     ),
 
@@ -79,7 +79,7 @@ public enum AgentType {
     LIVE_ANALYSIS(
             "LiveAnalysisAgent",
             List.of("live"),
-            "analysis_report",
+            "live_analysis",
             "Analyze live streaming data and find insights using LLM"
     ),
 
@@ -89,7 +89,7 @@ public enum AgentType {
     LIVE_REPORT(
             "LiveReportAgent",
             List.of("live"),
-            "analysis_report",
+            "live_report",
             "Generate structured live streaming performance report"
     );
 

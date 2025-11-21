@@ -33,7 +33,12 @@ public class OrderDataAgent implements Agent {
     public String name() {
         return AGENT_TYPE.getName();
     }
-
+    
+    @Override
+    public String taskType() {
+        return AGENT_TYPE.getTaskType();
+    }
+    
     @Override
     public List<String> domains() {
         return AGENT_TYPE.getDomains();
@@ -45,14 +50,35 @@ public class OrderDataAgent implements Agent {
     }
 
     @Override
+    public List<String> requiredParams() {
+        return List.of("timeRange");
+    }
+
+    @Override
+    public List<String> optionalParams() {
+        return List.of("queryType");
+    }
+
+    @Override
+    public Map<String, String> paramDescriptions() {
+        return Map.of(
+            "timeRange", "时间范围，包含 startTime 和 endTime",
+            "queryType", "查询类型，如: all, refunded, delayed 等"
+        );
+    }
+
+    @Override
     public AgentResult handle(AgentTask task) {
         log.info("OrderDataAgent handling task: {}", task.getTaskId());
 
         try {
-            Map<String, Object> timeRange = task.getPayloadValue("timeRange");
-            if (timeRange == null) {
-                return AgentResult.error("Missing required parameter: timeRange");
+            // 统一参数验证
+            AgentResult validationError = validateParams(task);
+            if (validationError != null) {
+                return validationError;
             }
+
+            Map<String, Object> timeRange = task.getParam("timeRange");
 
             // 调用订单数据 Tool
             Tool orderTool = toolRegistry.getTool("order_data_tool")
@@ -64,7 +90,7 @@ public class OrderDataAgent implements Agent {
 
             ToolResult toolResult = orderTool.invoke(Map.of(
                     "timeRange", timeRange,
-                    "queryType", task.getPayloadValue("queryType")
+                    "queryType", task.getParam("queryType", "all")
             ));
 
             if (!toolResult.isSuccess()) {

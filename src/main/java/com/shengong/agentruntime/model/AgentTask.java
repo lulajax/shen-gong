@@ -106,4 +106,45 @@ public class AgentTask {
         this.context.put(key, value);
         return this;
     }
+
+    /**
+     * 检查是否存在参数 (自动从 payload 或 context 查找)
+     *
+     * @param key 参数名
+     * @return true 如果参数存在
+     */
+    public boolean hasParam(String key) {
+        return payload.containsKey(key) || context.containsKey(key);
+    }
+
+    /**
+     * 获取参数值 (自动从 payload 或 context 获取)
+     * 优先从 payload 获取,如果不存在则从 context 获取
+     *
+     * @param key 参数名
+     * @param <T> 返回值类型
+     * @return 参数值,不存在返回 null
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T getParam(String key) {
+        T value = getPayloadValue(key);
+        if (value == null) {
+            value = getContextValue(key);
+        }
+        return value;
+    }
+
+    /**
+     * 获取参数值并提供默认值
+     *
+     * @param key 参数名
+     * @param defaultValue 默认值
+     * @param <T> 返回值类型
+     * @return 参数值,不存在返回默认值
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T getParam(String key, T defaultValue) {
+        T value = getParam(key);
+        return value != null ? value : defaultValue;
+    }
 }

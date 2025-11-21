@@ -33,6 +33,11 @@ public class LiveAnalysisAgent implements Agent {
     public String name() {
         return AGENT_TYPE.getName();
     }
+    
+    @Override
+    public String taskType() {
+        return AGENT_TYPE.getTaskType();
+    }
 
     @Override
     public List<String> domains() {
@@ -45,20 +50,31 @@ public class LiveAnalysisAgent implements Agent {
     }
 
     @Override
+    public List<String> requiredParams() {
+        return List.of("metrics");
+    }
+
+    @Override
+    public Map<String, String> paramDescriptions() {
+        return Map.of(
+            "metrics", "直播指标数据，通常来自 LiveDataPrepAgent 的输出"
+        );
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public AgentResult handle(AgentTask task) {
         log.info("LiveAnalysisAgent handling task: {}", task.getTaskId());
 
         try {
-            // 获取指标数据
-            Map<String, Object> metrics = task.getContextValue("metrics");
-            if (metrics == null) {
-                metrics = task.getPayloadValue("metrics");
+            // 统一参数验证
+            AgentResult validationError = validateParams(task);
+            if (validationError != null) {
+                return validationError;
             }
 
-            if (metrics == null) {
-                return AgentResult.error("Missing metrics from previous step");
-            }
+            // 获取指标数据
+            Map<String, Object> metrics = task.getParam("metrics");
 
             // 构建分析 Prompt
             String systemPrompt = """

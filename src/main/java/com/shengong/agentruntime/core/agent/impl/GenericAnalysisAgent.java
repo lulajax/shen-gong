@@ -31,6 +31,11 @@ public class GenericAnalysisAgent implements Agent {
     public String name() {
         return AGENT_TYPE.getName();
     }
+    
+    @Override
+    public String taskType() {
+        return AGENT_TYPE.getTaskType();
+    }
 
     @Override
     public List<String> domains() {
@@ -43,15 +48,30 @@ public class GenericAnalysisAgent implements Agent {
     }
 
     @Override
+    public List<String> requiredParams() {
+        return List.of("text");
+    }
+
+    @Override
+    public Map<String, String> paramDescriptions() {
+        return Map.of(
+            "text", "用户输入的文本内容，需要进行分析"
+        );
+    }
+
+    @Override
     public AgentResult handle(AgentTask task) {
         log.info("GenericAnalysisAgent handling task: {}", task.getTaskId());
 
         try {
-            // 获取用户输入
-            String userText = task.getPayloadValue("text");
-            if (userText == null || userText.isBlank()) {
-                return AgentResult.error("Missing required parameter: text");
+            // 统一参数验证
+            AgentResult validationError = validateParams(task);
+            if (validationError != null) {
+                return validationError;
             }
+
+            // 获取用户输入
+            String userText = task.getParam("text");
 
             // 调用 LLM 分析
             String systemPrompt = "你是一个专业分析助手，请根据用户输入总结重点，提取关键信息。";
