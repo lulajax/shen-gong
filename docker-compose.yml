@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: shengong-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: shengong_password
+      MYSQL_DATABASE: shengong
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./scripts/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - shengong-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  redis:
+    image: redis:7.0-alpine
+    container_name: shengong-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - shengong-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 3s
+      retries: 10
+
+  agent-runtime:
+    build: .
+    container_name: shengong-agent-runtime
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USERNAME=root
+      - DB_PASSWORD=shengong_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - shengong-network
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  redis-data:
+
+networks:
+  shengong-network:
+    driver: bridge
