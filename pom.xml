@@ -15,7 +15,7 @@
     <groupId>com.shengong</groupId>
     <artifactId>agent-runtime</artifactId>
     <version>1.0.0</version>
-    <name>神工 Agent Runtime</name>
+    <name>神工 </name>
     <description>智能决策与多 Agent 工作流平台</description>
 
     <properties>

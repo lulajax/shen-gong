@@ -1,4 +1,4 @@
--- 神工 Agent Runtime 数据库表结构
+-- 神工  数据库表结构
 
 -- 任务执行记录表
 CREATE TABLE IF NOT EXISTS task_execution (

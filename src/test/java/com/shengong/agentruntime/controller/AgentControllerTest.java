@@ -35,7 +35,7 @@ class AgentControllerTest {
     void testHealthCheck() throws Exception {
         mockMvc.perform(get("/api/v1/agent/health"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Agent Runtime is running"));
+                .andExpect(content().string(" is running"));
     }
 
     @Test

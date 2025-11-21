@@ -51,7 +51,7 @@ public class AgentController {
     @GetMapping("/health")
     @Operation(summary = "健康检查", description = "检查 Agent 服务状态")
     public ResponseEntity<String> health() {
-        return ResponseEntity.ok("Agent Runtime is running");
+        return ResponseEntity.ok(" is running");
     }
 
     /**

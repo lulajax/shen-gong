@@ -62,7 +62,7 @@ langchain4j:
     port: 10808                 # 代理端口
     type: HTTP                 # 代理类型: HTTP 或 SOCKS
 
-# Agent Runtime Configuration
+#  Configuration
 agent-runtime:
   # MCP Proxy Configuration
   mcp:

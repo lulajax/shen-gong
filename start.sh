@@ -3,7 +3,7 @@
 
 set -e
 
-echo "🚀 启动神工 Agent Runtime..."
+echo "🚀 启动神工 ..."
 
 # 检查 Java 版本
 if ! command -v java &> /dev/null; then

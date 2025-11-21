@@ -1,4 +1,4 @@
-# 神工 (Shen Gong) Agent Runtime
+# 神工 (Shen Gong) 
 
 > 企业级智能 Agent 工作流平台 - 让 AI 为业务赋能
 
@@ -9,7 +9,7 @@
 
 ## ✨ 简介
 
-**神工 Agent Runtime** 是一个功能强大的企业级多 Agent 协作平台，通过智能路由、工作流编排和可插拔架构，帮助企业快速构建 AI 驱动的智能决策和分析系统。
+**神工 (Shen Gong) ** 是一个功能强大的企业级多 Agent 协作平台，通过智能路由、工作流编排和可插拔架构，帮助企业快速构建 AI 驱动的智能决策和分析系统。
 
 ### 🎯 核心特性
 
@@ -604,7 +604,7 @@ langchain4j:
     temperature: 0.7
     timeout: 60s
 
-# Agent Runtime 配置
+#  配置
 agent-runtime:
   # 限流配置
   rate-limit:

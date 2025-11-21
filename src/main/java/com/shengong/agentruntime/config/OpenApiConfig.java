@@ -19,7 +19,7 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("神工 Agent Runtime API")
+                        .title("神工  API")
                         .version("1.0.0")
                         .description("智能决策与多 Agent 工作流平台 API 文档")
                         .license(new License()

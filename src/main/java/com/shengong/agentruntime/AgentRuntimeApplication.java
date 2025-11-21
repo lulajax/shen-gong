@@ -6,7 +6,7 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
- * 神工 Agent Runtime 应用主类
+ * 神工  应用主类
  *
  * @author 神工团队
  * @since 1.0.0
