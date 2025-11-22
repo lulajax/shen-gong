@@ -1,15 +1,19 @@
 package com.shengong.agentruntime.core.agent.impl;
 
-import com.shengong.agentruntime.core.agent.Agent;
-import com.shengong.agentruntime.core.agent.AgentType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shengong.agentruntime.core.agent.AbstractAgent;
+import com.shengong.agentruntime.core.agent.annotation.AgentDefinition;
+import com.shengong.agentruntime.core.param.AgentParam;
 import com.shengong.agentruntime.llm.LlmClient;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 根因分析 Agent
@@ -20,66 +24,41 @@ import java.util.*;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class RootCauseAgent implements Agent {
-
-    private static final AgentType AGENT_TYPE = AgentType.ROOT_CAUSE;
+@AgentDefinition(
+    name = "RootCauseAgent",
+    domains = {"order"},
+    taskType = "anomaly_detection",
+    description = "Analyze root causes of order anomalies using LLM"
+)
+public class RootCauseAgent extends AbstractAgent<RootCauseAgent.RootCauseParams> {
 
     private final LlmClient llmClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Override
-    public String name() {
-        return AGENT_TYPE.getName();
+    public RootCauseAgent(LlmClient llmClient) {
+        super(RootCauseParams.class);
+        this.llmClient = llmClient;
     }
-    
-    @Override
-    public String taskType() {
-        return AGENT_TYPE.getTaskType();
-    }
-    
-    @Override
-    public List<String> domains() {
-        return AGENT_TYPE.getDomains();
+
+    @Data
+    public static class RootCauseParams {
+        @AgentParam(required = true, description = "异常列表，来自 AnomalyDetectionAgent 的输出")
+        private List<Map<String, Object>> anomalies;
+
+        @AgentParam(required = false, description = "统计数据，包含各类指标")
+        private Map<String, Object> statistics;
     }
 
     @Override
-    public boolean supports(String taskType, String domain) {
-        return AGENT_TYPE.supports(taskType, domain);
-    }
-
-    @Override
-    public List<String> requiredParams() {
-        return List.of("anomalies");
-    }
-
-    @Override
-    public List<String> optionalParams() {
-        return List.of("statistics");
-    }
-
-    @Override
-    public Map<String, String> paramDescriptions() {
-        return Map.of(
-            "anomalies", "异常列表，来自 AnomalyDetectionAgent 的输出",
-            "statistics", "统计数据，包含各类指标"
-        );
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public AgentResult handle(AgentTask task) {
+    protected AgentResult execute(AgentTask task, RootCauseParams params) {
         log.info("RootCauseAgent handling task: {}", task.getTaskId());
 
         try {
-            // 统一参数验证（对于可选的 statistics，不会报错）
-            AgentResult validationError = validateParams(task);
-            if (validationError != null) {
-                return validationError;
+            List<Map<String, Object>> anomalies = params.getAnomalies();
+            Map<String, Object> statistics = params.getStatistics();
+            if (statistics == null) {
+                statistics = Map.of();
             }
-
-            List<Map<String, Object>> anomalies = task.getParam("anomalies");
-            Map<String, Object> statistics = task.getParam("statistics", Map.of());
 
             if (anomalies == null || anomalies.isEmpty()) {
                 return AgentResult.ok("No anomalies found, no root cause analysis needed", Map.of(
@@ -226,10 +205,5 @@ public class RootCauseAgent implements Agent {
                 "rootCauses", rootCauses,
                 "solutions", solutions
         );
-    }
-
-    @Override
-    public String description() {
-        return AGENT_TYPE.getDescription();
     }
 }

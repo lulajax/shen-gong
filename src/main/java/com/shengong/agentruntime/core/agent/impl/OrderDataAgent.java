@@ -1,16 +1,17 @@
 package com.shengong.agentruntime.core.agent.impl;
 
-import com.shengong.agentruntime.core.agent.Agent;
-import com.shengong.agentruntime.core.agent.AgentType;
+import com.shengong.agentruntime.core.agent.AbstractAgent;
+import com.shengong.agentruntime.core.agent.annotation.AgentDefinition;
+import com.shengong.agentruntime.core.param.AgentParam;
 import com.shengong.agentruntime.core.tool.Tool;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
 import com.shengong.agentruntime.model.ToolResult;
 import com.shengong.agentruntime.service.ToolRegistry;
-import lombok.RequiredArgsConstructor;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import java.util.List;
+
 import java.util.Map;
 
 /**
@@ -22,63 +23,40 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class OrderDataAgent implements Agent {
-
-    private static final AgentType AGENT_TYPE = AgentType.ORDER_DATA;
+@AgentDefinition(
+    name = "OrderDataAgent",
+    domains = {"order"},
+    taskType = "anomaly_detection",
+    description = "Fetch order data for anomaly detection"
+)
+public class OrderDataAgent extends AbstractAgent<OrderDataAgent.OrderDataParams> {
 
     private final ToolRegistry toolRegistry;
 
-    @Override
-    public String name() {
-        return AGENT_TYPE.getName();
+    public OrderDataAgent(ToolRegistry toolRegistry) {
+        super(OrderDataParams.class);
+        this.toolRegistry = toolRegistry;
     }
-    
-    @Override
-    public String taskType() {
-        return AGENT_TYPE.getTaskType();
-    }
-    
-    @Override
-    public List<String> domains() {
-        return AGENT_TYPE.getDomains();
+
+    @Data
+    public static class OrderDataParams {
+        @AgentParam(required = true, description = "时间范围，包含 startTime 和 endTime")
+        private Map<String, Object> timeRange;
+
+        @AgentParam(required = false, defaultValue = "all", description = "查询类型，如: all, refunded, delayed 等")
+        private String queryType;
     }
 
     @Override
-    public boolean supports(String taskType, String domain) {
-        return AGENT_TYPE.supports(taskType, domain);
-    }
-
-    @Override
-    public List<String> requiredParams() {
-        return List.of("timeRange");
-    }
-
-    @Override
-    public List<String> optionalParams() {
-        return List.of("queryType");
-    }
-
-    @Override
-    public Map<String, String> paramDescriptions() {
-        return Map.of(
-            "timeRange", "时间范围，包含 startTime 和 endTime",
-            "queryType", "查询类型，如: all, refunded, delayed 等"
-        );
-    }
-
-    @Override
-    public AgentResult handle(AgentTask task) {
+    protected AgentResult execute(AgentTask task, OrderDataParams params) {
         log.info("OrderDataAgent handling task: {}", task.getTaskId());
 
         try {
-            // 统一参数验证
-            AgentResult validationError = validateParams(task);
-            if (validationError != null) {
-                return validationError;
+            Map<String, Object> timeRange = params.getTimeRange();
+            String queryType = params.getQueryType();
+            if (queryType == null || queryType.isEmpty()) {
+                queryType = "all";
             }
-
-            Map<String, Object> timeRange = task.getParam("timeRange");
 
             // 调用订单数据 Tool
             Tool orderTool = toolRegistry.getTool("order_data_tool")
@@ -90,7 +68,7 @@ public class OrderDataAgent implements Agent {
 
             ToolResult toolResult = orderTool.invoke(Map.of(
                     "timeRange", timeRange,
-                    "queryType", task.getParam("queryType", "all")
+                    "queryType", queryType
             ));
 
             if (!toolResult.isSuccess()) {
@@ -105,10 +83,5 @@ public class OrderDataAgent implements Agent {
             log.error("OrderDataAgent failed: {}", e.getMessage(), e);
             return AgentResult.error("Data fetch failed: " + e.getMessage());
         }
-    }
-
-    @Override
-    public String description() {
-        return AGENT_TYPE.getDescription();
     }
 }

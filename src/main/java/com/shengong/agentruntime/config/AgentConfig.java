@@ -27,15 +27,16 @@ public class AgentConfig {
 
     /**
      * 自动注册所有 Agent
+     * 已被 AnnotationAgentRegistry 取代
      */
-    @Bean
-    public CommandLineRunner registerAgents(List<Agent> agents) {
-        return args -> {
-            log.info("Auto-registering {} agents", agents.size());
-            agents.forEach(agentRegistry::register);
-            log.info("Agent registration completed: total={}", agentRegistry.getCount());
-        };
-    }
+    // @Bean
+    // public CommandLineRunner registerAgents(List<Agent> agents) {
+    //     return args -> {
+    //         log.info("Auto-registering {} agents", agents.size());
+    //         agents.forEach(agentRegistry::register);
+    //         log.info("Agent registration completed: total={}", agentRegistry.getCount());
+    //     };
+    // }
 
     /**
      * 自动注册所有 Tool

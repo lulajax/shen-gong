@@ -1,15 +1,18 @@
 package com.shengong.agentruntime.core.agent.impl;
 
-import com.shengong.agentruntime.core.agent.Agent;
-import com.shengong.agentruntime.core.agent.AgentType;
-import com.shengong.agentruntime.llm.LlmClient;
+import com.shengong.agentruntime.core.agent.AbstractAgent;
+import com.shengong.agentruntime.core.agent.annotation.AgentDefinition;
+import com.shengong.agentruntime.core.param.AgentParam;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 异常检测 Agent
@@ -20,58 +23,30 @@ import java.util.*;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class AnomalyDetectionAgent implements Agent {
+@AgentDefinition(
+    name = "AnomalyDetectionAgent",
+    domains = {"order"},
+    taskType = "anomaly_detection",
+    description = "Detect anomalies in order data using rules and LLM"
+)
+public class AnomalyDetectionAgent extends AbstractAgent<AnomalyDetectionAgent.AnomalyDetectionParams> {
 
-    private static final AgentType AGENT_TYPE = AgentType.ANOMALY_DETECTION;
-
-    private final LlmClient llmClient;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    @Override
-    public String name() {
-        return AGENT_TYPE.getName();
-    }
-    @Override
-    public String taskType() {
-        return AGENT_TYPE.getTaskType();
+    public AnomalyDetectionAgent() {
+        super(AnomalyDetectionParams.class);
     }
 
-    @Override
-    public List<String> domains() {
-        return AGENT_TYPE.getDomains();
+    @Data
+    public static class AnomalyDetectionParams {
+        @AgentParam(required = true, description = "订单数据列表，包含订单状态、处理时间等信息")
+        private Map<String, Object> orders;
     }
 
     @Override
-    public boolean supports(String taskType, String domain) {
-        return AGENT_TYPE.supports(taskType, domain);
-    }
-
-    @Override
-    public List<String> requiredParams() {
-        return List.of("orders");
-    }
-
-    @Override
-    public Map<String, String> paramDescriptions() {
-        return Map.of(
-            "orders", "订单数据列表，包含订单状态、处理时间等信息"
-        );
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public AgentResult handle(AgentTask task) {
+    protected AgentResult execute(AgentTask task, AnomalyDetectionParams params) {
         log.info("AnomalyDetectionAgent handling task: {}", task.getTaskId());
 
         try {
-            // 统一参数验证
-            AgentResult validationError = validateParams(task);
-            if (validationError != null) {
-                return validationError;
-            }
-
-            Map<String, Object> orders = task.getParam("orders");
+            Map<String, Object> orders = params.getOrders();
 
             // 计算统计指标
             Map<String, Object> statistics = calculateStatistics(orders);
@@ -177,10 +152,5 @@ public class AnomalyDetectionAgent implements Agent {
         }
 
         return anomalies;
-    }
-
-    @Override
-    public String description() {
-        return AGENT_TYPE.getDescription();
     }
 }

@@ -1,13 +1,15 @@
 package com.shengong.agentruntime.core.agent.impl;
 
-import com.shengong.agentruntime.core.agent.Agent;
-import com.shengong.agentruntime.core.agent.AgentType;
+import com.shengong.agentruntime.core.agent.AbstractAgent;
+import com.shengong.agentruntime.core.agent.annotation.AgentDefinition;
+import com.shengong.agentruntime.core.param.AgentParam;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -19,56 +21,31 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-public class LiveDataPrepAgent implements Agent {
+@AgentDefinition(
+    name = "LiveDataPrepAgent",
+    domains = {"live"},
+    taskType = "live_data_prep",
+    description = "Calculate key metrics from live streaming data"
+)
+public class LiveDataPrepAgent extends AbstractAgent<LiveDataPrepAgent.LiveDataPrepParams> {
 
-    private static final AgentType AGENT_TYPE = AgentType.LIVE_DATA_PREP;
-
-    @Override
-    public String name() {
-        return AGENT_TYPE.getName();
-    }
-    
-    @Override
-    public String taskType() {
-        return AGENT_TYPE.getTaskType();
+    public LiveDataPrepAgent() {
+        super(LiveDataPrepParams.class);
     }
 
-    @Override
-    public List<String> domains() {
-        return AGENT_TYPE.getDomains();
-    }
-
-    @Override
-    public boolean supports(String taskType, String domain) {
-        return AGENT_TYPE.supports(taskType, domain);
+    @Data
+    public static class LiveDataPrepParams {
+        @AgentParam(required = true, description = "原始直播数据，通常来自 LiveDataFetchAgent 的输出")
+        private Map<String, Object> rawData;
     }
 
     @Override
-    public List<String> requiredParams() {
-        return List.of("rawData");
-    }
-
-    @Override
-    public Map<String, String> paramDescriptions() {
-        return Map.of(
-            "rawData", "原始直播数据，通常来自 LiveDataFetchAgent 的输出"
-        );
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public AgentResult handle(AgentTask task) {
+    protected AgentResult execute(AgentTask task, LiveDataPrepParams params) {
         log.info("LiveDataPrepAgent handling task: {}", task.getTaskId());
 
         try {
-            // 统一参数验证
-            AgentResult validationError = validateParams(task);
-            if (validationError != null) {
-                return validationError;
-            }
-
             // 从上下文或 payload 中获取原始数据
-            Map<String, Object> rawData = task.getParam("rawData");
+            Map<String, Object> rawData = params.getRawData();
 
             // 模拟计算指标
             Map<String, Object> metrics = calculateMetrics(rawData);
@@ -77,7 +54,7 @@ public class LiveDataPrepAgent implements Agent {
                     "metrics", metrics,
                     "rawDataSummary", Map.of(
                             "dataPoints", rawData.size(),
-                            "timeRange", rawData.get("timeRange")
+                            "timeRange", rawData.getOrDefault("timeRange", "")
                     )
             ));
 
@@ -124,10 +101,5 @@ public class LiveDataPrepAgent implements Agent {
         metrics.put("orderCount", orderCount);
 
         return metrics;
-    }
-
-    @Override
-    public String description() {
-        return AGENT_TYPE.getDescription();
     }
 }

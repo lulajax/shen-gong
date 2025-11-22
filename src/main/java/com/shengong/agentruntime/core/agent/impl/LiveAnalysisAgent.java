@@ -1,14 +1,16 @@
 package com.shengong.agentruntime.core.agent.impl;
 
-import com.shengong.agentruntime.core.agent.Agent;
-import com.shengong.agentruntime.core.agent.AgentType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shengong.agentruntime.core.agent.AbstractAgent;
+import com.shengong.agentruntime.core.agent.annotation.AgentDefinition;
+import com.shengong.agentruntime.core.param.AgentParam;
 import com.shengong.agentruntime.llm.LlmClient;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
 import java.util.List;
 import java.util.Map;
 
@@ -21,60 +23,35 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class LiveAnalysisAgent implements Agent {
-
-    private static final AgentType AGENT_TYPE = AgentType.LIVE_ANALYSIS;
+@AgentDefinition(
+    name = "LiveAnalysisAgent",
+    domains = {"live"},
+    taskType = "live_analysis",
+    description = "Analyze live streaming data and find insights using LLM"
+)
+public class LiveAnalysisAgent extends AbstractAgent<LiveAnalysisAgent.LiveAnalysisParams> {
 
     private final LlmClient llmClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Override
-    public String name() {
-        return AGENT_TYPE.getName();
+    public LiveAnalysisAgent(LlmClient llmClient) {
+        super(LiveAnalysisParams.class);
+        this.llmClient = llmClient;
     }
-    
-    @Override
-    public String taskType() {
-        return AGENT_TYPE.getTaskType();
+
+    @Data
+    public static class LiveAnalysisParams {
+        @AgentParam(required = true, description = "直播指标数据，通常来自 LiveDataPrepAgent 的输出")
+        private Map<String, Object> metrics;
     }
 
     @Override
-    public List<String> domains() {
-        return AGENT_TYPE.getDomains();
-    }
-
-    @Override
-    public boolean supports(String taskType, String domain) {
-        return AGENT_TYPE.supports(taskType, domain);
-    }
-
-    @Override
-    public List<String> requiredParams() {
-        return List.of("metrics");
-    }
-
-    @Override
-    public Map<String, String> paramDescriptions() {
-        return Map.of(
-            "metrics", "直播指标数据，通常来自 LiveDataPrepAgent 的输出"
-        );
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public AgentResult handle(AgentTask task) {
+    protected AgentResult execute(AgentTask task, LiveAnalysisParams params) {
         log.info("LiveAnalysisAgent handling task: {}", task.getTaskId());
 
         try {
-            // 统一参数验证
-            AgentResult validationError = validateParams(task);
-            if (validationError != null) {
-                return validationError;
-            }
-
             // 获取指标数据
-            Map<String, Object> metrics = task.getParam("metrics");
+            Map<String, Object> metrics = params.getMetrics();
 
             // 构建分析 Prompt
             String systemPrompt = """
@@ -143,10 +120,5 @@ public class LiveAnalysisAgent implements Agent {
         }
 
         return objectMapper.readValue(jsonContent, Map.class);
-    }
-
-    @Override
-    public String description() {
-        return AGENT_TYPE.getDescription();
     }
 }

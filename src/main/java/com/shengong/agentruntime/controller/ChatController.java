@@ -1,26 +1,20 @@
 package com.shengong.agentruntime.controller;
 
-import com.shengong.agentruntime.llm.LlmClient;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
 import com.shengong.agentruntime.service.IntelligentAgentRouter;
 import com.shengong.agentruntime.service.RouterAgentService;
-import dev.langchain4j.data.message.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 对话式 AI 控制器 - 支持多模态
@@ -38,400 +32,127 @@ public class ChatController {
 
     private final IntelligentAgentRouter intelligentRouter;
     private final RouterAgentService routerAgentService;
-    private final LlmClient llmClient;
     private final com.shengong.agentruntime.service.AgentRegistry agentRegistry;
 
     /**
      * 智能对话接口 - 自动路由到合适的 Agent
+     * 统一使用多轮对话模式，支持多模态（图片）输入
      */
     @PostMapping("/send")
-    @Operation(summary = "发送消息", description = "发送自然语言消息,自动选择合适的 Agent 处理")
+    @Operation(summary = "发送消息", description = "发送消息,自动选择合适的 Agent 处理。支持多轮对话(messages)和多模态图片输入(images)。")
     public ResponseEntity<ChatResponse> sendMessage(@RequestBody ChatRequest request) {
-        log.info("收到对话请求: userId={}, message={}",
-                request.getUserId(), request.getMessage());
+        // 移除 message 字段兼容性处理，仅使用 messages
+        List<IntelligentAgentRouter.ConversationMessage> messages = request.getMessages();
+        if (messages == null) {
+            messages = new ArrayList<>();
+        }
+
+        log.info("收到对话请求: userId={}, messages={}",
+                request.getUserId(), messages.size());
 
         try {
-            // 1. 智能路由（自动参数收集） - 根据用户输入创建 AgentTask
-            AgentTask task = intelligentRouter.routeFromUserInput(
-                    request.getMessage(),
-                    request.getContext()
-            );
+            // 统一流程：无论是否有图片，都交由 IntelligentAgentRouter 处理
+            
+            // 智能路由 (传入对话历史和图片)
+            // IntelligentAgentRouter 会负责将图片放入 AgentTask，并可能根据图片内容辅助路由
+            AgentTask task = intelligentRouter.routeFromConversation(messages);
 
-            // 设置用户信息
+            // 设置公共信息
             task.setUserId(request.getUserId());
             if (request.getSessionId() != null) {
                 task.putContext("sessionId", request.getSessionId());
             }
 
-            // 检查参数收集是否失败
-            Boolean paramValidationFailed = task.getContextValue("paramCollectionFailed");
-            if (Boolean.TRUE.equals(paramValidationFailed)) {
-                List<String> missingParams = task.getContextValue("missingParams");
+            // 处理任务
+            return processAgentTask(task);
 
-                // 获取选中的 Agent
-                Map<String, Object> routingInfo = task.getContextValue("routingInfo");
-                String agentName = routingInfo != null ?
-                    (String) routingInfo.get("selectedAgent") : null;
+        } catch (Exception e) {
+            log.error("对话处理失败: {}", e.getMessage(), e);
+            return buildErrorResponse(e.getMessage());
+        }
+    }
 
-                // 生成友好的参数补充提示
-                String userPrompt = "";
-                if (agentName != null) {
-                    com.shengong.agentruntime.core.agent.Agent agent =
-                        agentRegistry.findAgent(task.getTaskType(), task.getDomain()).orElse(null);
-                    if (agent != null) {
-                        userPrompt = intelligentRouter.generateParamPrompt(agent, missingParams);
-                    }
-                }
 
-                // 如果无法生成友好提示，使用默认格式
-                if (userPrompt.isEmpty()) {
-                    userPrompt = "缺少必填参数: " + String.join(", ", missingParams) +
-                               "。请提供这些参数后重试。";
-                }
+    /**
+     * 处理 Agent 任务并构建响应
+     */
+    private ResponseEntity<ChatResponse> processAgentTask(AgentTask task) {
+        // 检查参数收集是否失败
+        Boolean paramValidationFailed = task.getContextValue("paramCollectionFailed");
+        if (Boolean.TRUE.equals(paramValidationFailed)) {
+            List<String> missingParams = task.getContextValue("missingParams");
 
-                ChatResponse errorResponse = new ChatResponse();
-                errorResponse.setMessage(userPrompt);
-                errorResponse.setSuccess(false);
-                errorResponse.setData(Map.of(
+            // 生成友好提示
+            String userPrompt = "";
+
+            // 优先使用 ParamExtractionService 生成的提示
+            String missingPrompt = task.getContextValue("missingPrompt");
+            if (missingPrompt != null && !missingPrompt.isEmpty()) {
+                userPrompt = missingPrompt;
+            } else {
+                userPrompt = "缺少必填参数: " + String.join(", ", missingParams);
+            }
+
+            ChatResponse errorResponse = new ChatResponse();
+            errorResponse.setMessage(userPrompt);
+            errorResponse.setSuccess(false);
+            errorResponse.setData(Map.of(
                     "missingParams", missingParams,
                     "paramCollectionFailed", true,
                     "needMoreInfo", true,
                     "taskContext", Map.of(
-                        "taskType", task.getTaskType(),
-                        "domain", task.getDomain(),
-                        "partialPayload", task.getPayload()
+                            "taskType", task.getTaskType(),
+                            "domain", task.getDomain(),
+                            "partialPayload", task.getPayload()
                     )
-                ));
-
-                return ResponseEntity.ok(errorResponse);
-            }
-
-            // 2. 执行 Agent
-            AgentResult result = routerAgentService.route(task);
-
-            // 3. 构建响应
-            ChatResponse response = new ChatResponse();
-            response.setMessage(result.getSummary());
-            response.setSuccess(result.isSuccess());
-            response.setData(result.getData());
-            response.setDebug(result.getDebug());
-
-            // 添加路由信息
-            Map<String, Object> routingInfo = task.getContextValue("routingInfo");
-            if (routingInfo != null) {
-                response.setRoutingInfo(routingInfo);
-            }
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("对话处理失败: {}", e.getMessage(), e);
-
-            ChatResponse errorResponse = new ChatResponse();
-            errorResponse.setMessage("抱歉,处理您的请求时出现了问题: " + e.getMessage());
-            errorResponse.setSuccess(false);
-
-            return ResponseEntity.ok(errorResponse);
-        }
-    }
-
-    /**
-     * 多模态对话接口 - 支持文本 + 图片
-     */
-    @PostMapping(value = "/multimodal", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "多模态对话", description = "支持文本、图片等多模态输入")
-    public ResponseEntity<ChatResponse> multimodalChat(
-            @RequestParam("userId") String userId,
-            @RequestParam(value = "sessionId", required = false) String sessionId,
-            @RequestParam("message") String message,
-            @RequestParam(value = "images", required = false) List<MultipartFile> images
-    ) {
-        log.info("收到多模态对话请求: userId={}, message={}, images={}",
-                userId, message, images != null ? images.size() : 0);
-
-        try {
-            // 1. 构建多模态消息
-            List<Content> contents = new ArrayList<>();
-
-            // 添加文本内容
-            contents.add(TextContent.from(message));
-
-            // 添加图片内容
-            if (images != null && !images.isEmpty()) {
-                for (MultipartFile imageFile : images) {
-                    try {
-                        byte[] imageBytes = imageFile.getBytes();
-                        String mimeType = imageFile.getContentType();
-                        if (mimeType == null) {
-                            mimeType = "image/jpeg"; // 默认类型
-                        }
-
-                        // 使用 Base64 编码图片
-                        String base64Image = Base64.getEncoder().encodeToString(imageBytes);
-                        contents.add(ImageContent.from(base64Image, mimeType));
-
-                        log.debug("添加图片: name={}, size={}, type={}",
-                                imageFile.getOriginalFilename(), imageBytes.length, mimeType);
-
-                    } catch (Exception e) {
-                        log.error("处理图片失败: {}", e.getMessage());
-                    }
-                }
-            }
-
-            // 2. 创建用户消息
-            UserMessage userMessage = UserMessage.from(contents);
-
-            // 3. 调用 LLM 进行多模态对话
-            List<ChatMessage> messages = new ArrayList<>();
-            messages.add(userMessage);
-
-            String aiResponse = llmClient.chatMultimodal(messages);
-
-            // 4. 构建响应
-            ChatResponse response = new ChatResponse();
-            response.setMessage(aiResponse);
-            response.setSuccess(true);
-            response.setData(Map.of(
-                    "modelName", llmClient.getModelName(),
-                    "multimodal", true,
-                    "imageCount", images != null ? images.size() : 0
             ));
 
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("多模态对话处理失败: {}", e.getMessage(), e);
-
-            ChatResponse errorResponse = new ChatResponse();
-            errorResponse.setMessage("抱歉,处理您的多模态请求时出现了问题: " + e.getMessage());
-            errorResponse.setSuccess(false);
-
             return ResponseEntity.ok(errorResponse);
         }
-    }
 
-    /**
-     * 多模态对话接口 (JSON 格式) - 支持 Base64 编码的图片
-     */
-    @PostMapping("/multimodal-json")
-    @Operation(summary = "多模态对话 (JSON)", description = "支持文本和 Base64 编码的图片")
-    public ResponseEntity<ChatResponse> multimodalChatJson(@RequestBody MultimodalChatRequest request) {
-        log.info("收到多模态对话请求 (JSON): userId={}, message={}, images={}",
-                request.getUserId(), request.getMessage(),
-                request.getImages() != null ? request.getImages().size() : 0);
+        // 执行 Agent
+        AgentResult result = routerAgentService.route(task);
 
-        try {
-            // 1. 构建多模态消息
-            List<Content> contents = new ArrayList<>();
+        // 构建响应
+        ChatResponse response = new ChatResponse();
+        response.setMessage(result.getSummary());
+        response.setSuccess(result.isSuccess());
+        response.setData(result.getData());
+        response.setDebug(result.getDebug());
 
-            // 添加文本内容
-            contents.add(TextContent.from(request.getMessage()));
-
-            // 添加图片内容
-            if (request.getImages() != null && !request.getImages().isEmpty()) {
-                for (ImageData imageData : request.getImages()) {
-                    contents.add(ImageContent.from(
-                            imageData.getBase64Data(),
-                            imageData.getMimeType() != null ? imageData.getMimeType() : "image/jpeg"
-                    ));
-                }
-            }
-
-            // 2. 创建用户消息
-            UserMessage userMessage = UserMessage.from(contents);
-
-            // 3. 调用 LLM 进行多模态对话
-            List<ChatMessage> messages = new ArrayList<>();
-            messages.add(userMessage);
-
-            String aiResponse = llmClient.chatMultimodal(messages);
-
-            // 4. 构建响应
-            ChatResponse response = new ChatResponse();
-            response.setMessage(aiResponse);
-            response.setSuccess(true);
-            response.setData(Map.of(
-                    "modelName", llmClient.getModelName(),
-                    "multimodal", true,
-                    "imageCount", request.getImages() != null ? request.getImages().size() : 0
-            ));
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("多模态对话处理失败: {}", e.getMessage(), e);
-
-            ChatResponse errorResponse = new ChatResponse();
-            errorResponse.setMessage("抱歉,处理您的多模态请求时出现了问题: " + e.getMessage());
-            errorResponse.setSuccess(false);
-
-            return ResponseEntity.ok(errorResponse);
+        // 添加路由信息
+        Map<String, Object> routingInfo = task.getContextValue("routingInfo");
+        if (routingInfo != null) {
+            response.setRoutingInfo(routingInfo);
         }
+
+        return ResponseEntity.ok(response);
     }
 
-    /**
-     * 多轮对话接口 - 支持对话历史
-     */
-    @PostMapping("/conversation")
-    @Operation(summary = "多轮对话", description = "支持对话历史的多轮交互")
-    public ResponseEntity<ChatResponse> conversation(@RequestBody ConversationRequest request) {
-        log.info("收到对话请求: userId={}, messages={}",
-                request.getUserId(), request.getMessages().size());
-
-        try {
-            // 1. 从对话历史中智能路由（自动参数收集）
-            AgentTask task = intelligentRouter.routeFromUserInput(
-                    request.getMessages().stream()
-                            .filter(msg -> "user".equals(msg.getRole()))
-                            .map(IntelligentAgentRouter.ConversationMessage::getContent)
-                            .collect(Collectors.joining("\n")),
-                    Map.of("conversationHistory", request.getMessages())
-            );
-
-            // 设置用户信息
-            task.setUserId(request.getUserId());
-            task.putContext("sessionId", request.getSessionId());
-
-            // 检查参数收集是否失败
-            Boolean paramValidationFailed = task.getContextValue("paramCollectionFailed");
-            if (Boolean.TRUE.equals(paramValidationFailed)) {
-                List<String> missingParams = task.getContextValue("missingParams");
-
-                // 生成友好提示
-                String userPrompt = "";
-                com.shengong.agentruntime.core.agent.Agent agent =
-                    agentRegistry.findAgent(task.getTaskType(), task.getDomain()).orElse(null);
-                if (agent != null) {
-                    userPrompt = intelligentRouter.generateParamPrompt(agent, missingParams);
-                } else {
-                    userPrompt = "缺少必填参数: " + String.join(", ", missingParams);
-                }
-
-                ChatResponse errorResponse = new ChatResponse();
-                errorResponse.setMessage(userPrompt);
-                errorResponse.setSuccess(false);
-                errorResponse.setData(Map.of(
-                    "missingParams", missingParams,
-                    "needMoreInfo", true
-                ));
-
-                return ResponseEntity.ok(errorResponse);
-            }
-
-            // 2. 执行 Agent
-            AgentResult result = routerAgentService.route(task);
-
-            // 3. 构建响应
-            ChatResponse response = new ChatResponse();
-            response.setMessage(result.getSummary());
-            response.setSuccess(result.isSuccess());
-            response.setData(result.getData());
-            response.setDebug(result.getDebug());
-
-            Map<String, Object> routingInfo = task.getContextValue("routingInfo");
-            if (routingInfo != null) {
-                response.setRoutingInfo(routingInfo);
-            }
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("对话处理失败: {}", e.getMessage(), e);
-
-            ChatResponse errorResponse = new ChatResponse();
-            errorResponse.setMessage("抱歉,处理您的请求时出现了问题: " + e.getMessage());
-            errorResponse.setSuccess(false);
-
-            return ResponseEntity.ok(errorResponse);
-        }
+    private ResponseEntity<ChatResponse> buildErrorResponse(String errorMessage) {
+        ChatResponse errorResponse = new ChatResponse();
+        errorResponse.setMessage("抱歉,处理您的请求时出现了问题: " + errorMessage);
+        errorResponse.setSuccess(false);
+        return ResponseEntity.ok(errorResponse);
     }
 
-    /**
-     * 预览路由 - 不执行,仅返回路由结果
-     */
-    @PostMapping("/preview")
-    @Operation(summary = "预览路由", description = "查看消息会被路由到哪个 Agent,不实际执行")
-    public ResponseEntity<RoutePreview> previewRoute(@RequestBody PreviewRequest request) {
-        try {
-            AgentTask task = intelligentRouter.routeFromUserInput(
-                    request.getMessage(),
-                    null
-            );
+    // --- DTOs ---
 
-            RoutePreview preview = new RoutePreview();
-            preview.setTaskType(task.getTaskType());
-            preview.setDomain(task.getDomain());
-            preview.setPayload(task.getPayload());
-
-            Map<String, Object> routingInfo = task.getContextValue("routingInfo");
-            if (routingInfo != null) {
-                preview.setSelectedAgent((String) routingInfo.get("selectedAgent"));
-                preview.setConfidence((Double) routingInfo.get("confidence"));
-                preview.setReason((String) routingInfo.get("reason"));
-            }
-
-            return ResponseEntity.ok(preview);
-
-        } catch (Exception e) {
-            log.error("路由预览失败: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * 对话请求
-     */
     @Data
     public static class ChatRequest {
         private String userId;
         private String sessionId;
-        private String message;
         private Map<String, Object> context;
-    }
-
-    /**
-     * 多模态对话请求 (JSON)
-     */
-    @Data
-    public static class MultimodalChatRequest {
-        private String userId;
-        private String sessionId;
-        private String message;
-        private List<ImageData> images;
-    }
-
-    /**
-     * 图片数据
-     */
-    @Data
-    public static class ImageData {
-        private String base64Data;  // Base64 编码的图片数据
-        private String mimeType;    // MIME 类型,如 image/jpeg, image/png
-        private String description; // 可选的图片描述
-    }
-
-    /**
-     * 多轮对话请求
-     */
-    @Data
-    public static class ConversationRequest {
-        private String userId;
-        private String sessionId;
+        // 支持多轮对话
         private List<IntelligentAgentRouter.ConversationMessage> messages;
     }
 
-    /**
-     * 预览请求
-     */
+
     @Data
     public static class PreviewRequest {
-        private String message;
+        private List<IntelligentAgentRouter.ConversationMessage> messages;
     }
 
-    /**
-     * 对话响应
-     */
     @Data
     public static class ChatResponse {
         private String message;
@@ -441,9 +162,6 @@ public class ChatController {
         private Map<String, Object> debug;
     }
 
-    /**
-     * 路由预览
-     */
     @Data
     public static class RoutePreview {
         private String selectedAgent;

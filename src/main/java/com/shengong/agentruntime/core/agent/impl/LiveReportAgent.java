@@ -1,11 +1,14 @@
 package com.shengong.agentruntime.core.agent.impl;
 
-import com.shengong.agentruntime.core.agent.Agent;
-import com.shengong.agentruntime.core.agent.AgentType;
+import com.shengong.agentruntime.core.agent.AbstractAgent;
+import com.shengong.agentruntime.core.agent.annotation.AgentDefinition;
+import com.shengong.agentruntime.core.param.AgentParam;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,58 +22,35 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-public class LiveReportAgent implements Agent {
+@AgentDefinition(
+    name = "LiveReportAgent",
+    domains = {"live"},
+    taskType = "live_report",
+    description = "Generate structured report for live streaming performance"
+)
+public class LiveReportAgent extends AbstractAgent<LiveReportAgent.LiveReportParams> {
 
-    private static final AgentType AGENT_TYPE = AgentType.LIVE_REPORT;
-
-    @Override
-    public String name() {
-        return AGENT_TYPE.getName();
-    }
-    
-    @Override
-    public String taskType() {
-        return AGENT_TYPE.getTaskType();
-    }
-    
-    @Override
-    public List<String> domains() {
-        return AGENT_TYPE.getDomains();
+    public LiveReportAgent() {
+        super(LiveReportParams.class);
     }
 
-    @Override
-    public boolean supports(String taskType, String domain) {
-        return AGENT_TYPE.supports(taskType, domain);
+    @Data
+    public static class LiveReportParams {
+        @AgentParam(required = true, description = "分析结果，包含 findings、rootCauses、suggestions 等")
+        private Map<String, Object> analysis;
+
+        @AgentParam(required = true, description = "直播指标数据")
+        private Map<String, Object> metrics;
     }
 
     @Override
-    public List<String> requiredParams() {
-        return List.of("analysis", "metrics");
-    }
-
-    @Override
-    public Map<String, String> paramDescriptions() {
-        return Map.of(
-            "analysis", "分析结果，包含 findings、rootCauses、suggestions 等",
-            "metrics", "直播指标数据"
-        );
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public AgentResult handle(AgentTask task) {
+    protected AgentResult execute(AgentTask task, LiveReportParams params) {
         log.info("LiveReportAgent handling task: {}", task.getTaskId());
 
         try {
-            // 统一参数验证
-            AgentResult validationError = validateParams(task);
-            if (validationError != null) {
-                return validationError;
-            }
-
             // 获取分析数据
-            Map<String, Object> analysis = task.getParam("analysis");
-            Map<String, Object> metrics = task.getParam("metrics");
+            Map<String, Object> analysis = params.getAnalysis();
+            Map<String, Object> metrics = params.getMetrics();
 
             // 生成报告
             Map<String, Object> report = generateReport(analysis, metrics, task);
@@ -92,7 +72,6 @@ public class LiveReportAgent implements Agent {
     /**
      * 生成报告
      */
-    @SuppressWarnings("unchecked")
     private Map<String, Object> generateReport(Map<String, Object> analysis,
                                                 Map<String, Object> metrics,
                                                 AgentTask task) {
@@ -107,13 +86,13 @@ public class LiveReportAgent implements Agent {
         report.put("kpi", metrics);
 
         // 分析结果
-        Map<String, Object> analysisMap = (Map<String, Object>) analysis;
-        report.put("findings", analysisMap.getOrDefault("findings", List.of()));
-        report.put("rootCauses", analysisMap.getOrDefault("rootCauses", List.of()));
-        report.put("suggestions", analysisMap.getOrDefault("suggestions", List.of()));
+        // analysis 已经是 Map<String, Object> 类型，无需强制转换
+        report.put("findings", analysis.getOrDefault("findings", List.of()));
+        report.put("rootCauses", analysis.getOrDefault("rootCauses", List.of()));
+        report.put("suggestions", analysis.getOrDefault("suggestions", List.of()));
 
         // 总结
-        report.put("summary", analysisMap.getOrDefault("summary", ""));
+        report.put("summary", analysis.getOrDefault("summary", ""));
 
         return report;
     }
@@ -130,10 +109,5 @@ public class LiveReportAgent implements Agent {
 
         return String.format("直播间整体 GMV 为 %.2f，较前一日%s约 %d%%",
                 gmv, trend, changePercent);
-    }
-
-    @Override
-    public String description() {
-        return AGENT_TYPE.getDescription();
     }
 }

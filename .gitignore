@@ -43,3 +43,4 @@ application-secret.yml
 .env
 node_modules/
 GEMINI.md
+CLAUDE.md

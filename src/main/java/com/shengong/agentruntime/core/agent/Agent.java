@@ -135,4 +135,12 @@ public interface Agent {
 
         return null; // 验证通过
     }
+
+    /**
+     * 获取参数类型类
+     * 用于参数提取和绑定
+     *
+     * @return 参数类型 Class
+     */
+    Class<?> getParamType();
 }
