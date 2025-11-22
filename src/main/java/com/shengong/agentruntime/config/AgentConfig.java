@@ -1,15 +1,17 @@
 package com.shengong.agentruntime.config;
 
 import com.shengong.agentruntime.core.agent.Agent;
+import com.shengong.agentruntime.core.agent.annotation.AgentDefinition;
 import com.shengong.agentruntime.core.tool.Tool;
+import com.shengong.agentruntime.core.tool.annotation.ToolDefinition;
 import com.shengong.agentruntime.service.AgentRegistry;
 import com.shengong.agentruntime.service.ToolRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.CommandLineRunner;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import java.util.List;
 
 /**
  * Agent 自动配置
@@ -25,28 +27,35 @@ public class AgentConfig {
     private final AgentRegistry agentRegistry;
     private final ToolRegistry toolRegistry;
 
-    /**
-     * 自动注册所有 Agent
-     * 已被 AnnotationAgentRegistry 取代
-     */
-    // @Bean
-    // public CommandLineRunner registerAgents(List<Agent> agents) {
-    //     return args -> {
-    //         log.info("Auto-registering {} agents", agents.size());
-    //         agents.forEach(agentRegistry::register);
-    //         log.info("Agent registration completed: total={}", agentRegistry.getCount());
-    //     };
-    // }
-
-    /**
-     * 自动注册所有 Tool
-     */
     @Bean
-    public CommandLineRunner registerTools(List<Tool> tools) {
-        return args -> {
-            log.info("Auto-registering {} tools", tools.size());
-            tools.forEach(toolRegistry::register);
-            log.info("Tool registration completed: total={}", toolRegistry.getCount());
+    public BeanPostProcessor agentAndToolPostProcessor() {
+        return new BeanPostProcessor() {
+            @Override
+            public Object postProcessAfterInitialization(@org.springframework.lang.NonNull Object bean, @org.springframework.lang.NonNull String beanName) throws BeansException {
+                // 自动注册 Agent
+                if (bean.getClass().isAnnotationPresent(AgentDefinition.class)) {
+                    if (bean instanceof Agent) {
+                        Agent agent = (Agent) bean;
+                        log.info("Found annotated agent: {} (bean: {})", agent.name(), beanName);
+                        agentRegistry.register(agent);
+                    } else {
+                        log.warn("Bean {} annotated with @AgentDefinition but does not implement Agent interface", beanName);
+                    }
+                }
+
+                // 自动注册 Tool
+                if (bean.getClass().isAnnotationPresent(ToolDefinition.class)) {
+                    if (bean instanceof Tool) {
+                        Tool tool = (Tool) bean;
+                        log.info("Found annotated tool: {} (bean: {})", tool.name(), beanName);
+                        toolRegistry.register(tool);
+                    } else {
+                        log.warn("Bean {} annotated with @ToolDefinition but does not implement Tool interface", beanName);
+                    }
+                }
+
+                return bean;
+            }
         };
     }
 }

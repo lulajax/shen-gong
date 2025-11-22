@@ -1,11 +1,10 @@
 package com.shengong.agentruntime.core.tool.impl;
 
-import com.shengong.agentruntime.core.tool.Tool;
-import com.shengong.agentruntime.core.tool.ToolType;
+import com.shengong.agentruntime.core.tool.AbstractTool;
+import com.shengong.agentruntime.core.tool.annotation.ToolDefinition;
 import com.shengong.agentruntime.model.ToolResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import java.time.Duration;
 import java.util.Map;
@@ -18,10 +17,12 @@ import java.util.Map;
  * @since 1.0.0
  */
 @Slf4j
-@Component
-public class HttpClientTool implements Tool {
-
-    private static final ToolType TOOL_TYPE = ToolType.HTTP_CLIENT;
+@ToolDefinition(
+        name = "http_client_tool",
+        description = "Make HTTP requests to external services",
+        category = "http"
+)
+public class HttpClientTool extends AbstractTool {
 
     private final WebClient webClient;
     private final int timeout;
@@ -29,21 +30,6 @@ public class HttpClientTool implements Tool {
     public HttpClientTool(@Value("${agent-runtime.tool.http.timeout:30000}") int timeout) {
         this.timeout = timeout;
         this.webClient = WebClient.builder().build();
-    }
-
-    @Override
-    public String name() {
-        return TOOL_TYPE.getName();
-    }
-
-    @Override
-    public String description() {
-        return TOOL_TYPE.getDescription();
-    }
-
-    @Override
-    public String category() {
-        return TOOL_TYPE.getCategory();
     }
 
     @Override

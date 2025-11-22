@@ -1,13 +1,12 @@
 package com.shengong.agentruntime.core.tool.impl;
 
-import com.shengong.agentruntime.core.tool.Tool;
-import com.shengong.agentruntime.core.tool.ToolType;
+import com.shengong.agentruntime.core.tool.AbstractTool;
+import com.shengong.agentruntime.core.tool.annotation.ToolDefinition;
 import com.shengong.agentruntime.model.ToolResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import java.time.Duration;
 import java.util.Map;
@@ -20,12 +19,14 @@ import java.util.Map;
  * @since 1.0.0
  */
 @Slf4j
-@Component
 @ConditionalOnProperty(prefix = "agent-runtime.mcp", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
-public class McpProxyTool implements Tool {
-
-    private static final ToolType TOOL_TYPE = ToolType.MCP_PROXY;
+@ToolDefinition(
+        name = "mcp_proxy_tool",
+        description = "Proxy tool for Model Context Protocol (MCP) services",
+        category = "mcp"
+)
+public class McpProxyTool extends AbstractTool {
 
     @Value("${agent-runtime.mcp.proxy.url}")
     private String mcpProxyUrl;
@@ -34,21 +35,6 @@ public class McpProxyTool implements Tool {
     private int timeout;
 
     private final WebClient.Builder webClientBuilder;
-
-    @Override
-    public String name() {
-        return TOOL_TYPE.getName();
-    }
-
-    @Override
-    public String description() {
-        return TOOL_TYPE.getDescription();
-    }
-
-    @Override
-    public String category() {
-        return TOOL_TYPE.getCategory();
-    }
 
     @Override
     @SuppressWarnings("unchecked")

@@ -1,14 +1,13 @@
 package com.shengong.agentruntime.core.tool.impl;
 
-import com.shengong.agentruntime.core.tool.Tool;
-import com.shengong.agentruntime.core.tool.ToolType;
+import com.shengong.agentruntime.core.tool.AbstractTool;
+import com.shengong.agentruntime.core.tool.annotation.ToolDefinition;
 import com.shengong.agentruntime.model.ToolResult;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.springframework.stereotype.Component;
 import java.util.*;
 
 /**
@@ -19,25 +18,12 @@ import java.util.*;
  * @since 1.0.0
  */
 @Slf4j
-@Component
-public class WebScrapeTool implements Tool {
-
-    private static final ToolType TOOL_TYPE = ToolType.WEB_SCRAPE;
-
-    @Override
-    public String name() {
-        return TOOL_TYPE.getName();
-    }
-
-    @Override
-    public String description() {
-        return TOOL_TYPE.getDescription();
-    }
-
-    @Override
-    public String category() {
-        return TOOL_TYPE.getCategory();
-    }
+@ToolDefinition(
+        name = "web_scrape_tool",
+        description = "Scrape data from web pages using CSS selectors",
+        category = "scraper"
+)
+public class WebScrapeTool extends AbstractTool {
 
     @Override
     @SuppressWarnings("unchecked")

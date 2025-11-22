@@ -1,10 +1,9 @@
 package com.shengong.agentruntime.core.tool.impl;
 
-import com.shengong.agentruntime.core.tool.Tool;
-import com.shengong.agentruntime.core.tool.ToolType;
+import com.shengong.agentruntime.core.tool.AbstractTool;
+import com.shengong.agentruntime.core.tool.annotation.ToolDefinition;
 import com.shengong.agentruntime.model.ToolResult;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import java.util.*;
 
 /**
@@ -15,25 +14,12 @@ import java.util.*;
  * @since 1.0.0
  */
 @Slf4j
-@Component
-public class LiveDataTool implements Tool {
-
-    private static final ToolType TOOL_TYPE = ToolType.LIVE_DATA;
-
-    @Override
-    public String name() {
-        return TOOL_TYPE.getName();
-    }
-
-    @Override
-    public String description() {
-        return TOOL_TYPE.getDescription();
-    }
-
-    @Override
-    public String category() {
-        return TOOL_TYPE.getCategory();
-    }
+@ToolDefinition(
+        name = "live_data_tool",
+        description = "Fetch live streaming data from external service",
+        category = "data-source"
+)
+public class LiveDataTool extends AbstractTool {
 
     @Override
     @SuppressWarnings("unchecked")
