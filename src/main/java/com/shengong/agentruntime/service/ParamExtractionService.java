@@ -43,26 +43,28 @@ public class ParamExtractionService {
      * @return 验证结果
      */
     public ParamValidationResult ensureParams(Agent agent, AgentTask task, String userInput) {
-        // 1. 初步验证，获取缺失参数
-        List<String> missingParams = paramValidator.validateAndCollect(task, agent);
+        // 1. 获取所有可能的参数列表（包括必需和可选），以便支持更新
+        List<String> allParams = new java.util.ArrayList<>();
+        if (agent.requiredParams() != null) {
+            allParams.addAll(agent.requiredParams());
+        }
+        if (agent.optionalParams() != null) {
+            allParams.addAll(agent.optionalParams());
+        }
 
+        // 2. 尝试利用 LLM 从用户输入中提取参数 (针对所有参数，支持更新)
+        log.info("尝试从用户输入中提取/更新参数: {}...", allParams);
+        extractParamsWithLlm(agent, task, allParams, userInput);
+
+        // 3. 验证必需参数是否缺失
+        List<String> missingParams = paramValidator.validateAndCollect(task, agent);
         if (missingParams.isEmpty()) {
             return ParamValidationResult.success();
         }
 
-        // 2. 尝试利用 LLM 从用户输入中提取参数
-        log.info("Agent {} 缺失参数: {}, 尝试从用户输入中提取...", agent.name(), missingParams);
-        extractParamsWithLlm(agent, task, missingParams, userInput);
-
-        // 3. 再次验证
-        List<String> stillMissing = paramValidator.validateAndCollect(task, agent);
-        if (stillMissing.isEmpty()) {
-            return ParamValidationResult.success();
-        }
-
         // 4. 仍有缺失，生成提示语
-        String missingPrompt = generateMissingParamsPrompt(agent, stillMissing);
-        return ParamValidationResult.fail(stillMissing, missingPrompt);
+        String missingPrompt = generateMissingParamsPrompt(agent, missingParams);
+        return ParamValidationResult.fail(missingParams, missingPrompt);
     }
 
     private void extractParamsWithLlm(Agent agent, AgentTask task, List<String> missingParams, String userInput) {
