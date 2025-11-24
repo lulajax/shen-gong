@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -133,10 +135,11 @@ public class ParamExtractionService {
                 2. 时间相关参数请转换为标准格式 (yyyy-MM-dd HH:mm:ss)
                    - "昨天" → 计算具体日期
                    - "最近7天" → 计算开始和结束时间
+                   - 今天是北京时间：%s
                 3. 返回标准 JSON 格式
 
                 用户输入(含上下文): "%s"
-                """, paramDesc, historyInput.toString());
+                """, paramDesc, LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")), historyInput.toString());
 
             log.debug("参数提取 Prompt: {}", systemPrompt);
             String response = llmClient.chat(systemPrompt, userInput);
