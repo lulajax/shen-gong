@@ -78,8 +78,8 @@ public class ChatController {
      */
     private ResponseEntity<ChatResponse> processAgentTask(AgentTask task) {
         // 检查参数收集是否失败
-        Boolean paramValidationFailed = task.getContextValue("paramCollectionFailed");
-        if (Boolean.TRUE.equals(paramValidationFailed)) {
+        Boolean paramValidationPassed = task.getContextValue("paramValidationPassed");
+        if (Boolean.FALSE.equals(paramValidationPassed)) {
             List<String> missingParams = task.getContextValue("missingParams");
 
             // 生成友好提示

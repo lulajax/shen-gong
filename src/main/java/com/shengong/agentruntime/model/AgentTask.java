@@ -36,6 +36,11 @@ public class AgentTask {
     private Map<String, Object> payload = new HashMap<>();
 
     /**
+     * 提取的参数，用于存储 LLM 提取的参数
+     */
+    private Map<String, Object> extractedParams = new HashMap<>();
+
+    /**
      * 上下文信息
      */
     private Map<String, Object> context = new HashMap<>();
@@ -104,6 +109,14 @@ public class AgentTask {
      */
     public AgentTask putContext(String key, Object value) {
         this.context.put(key, value);
+        return this;
+    }
+
+    /**
+     * 设置 extractedParams 值
+     */
+    public AgentTask putExtractedParams(String key, Object value) {
+        this.extractedParams.put(key, value);
         return this;
     }
 

@@ -35,6 +35,8 @@ public class ParamBinder {
         // 1. 基础转换
         T params;
         try {
+            objectMapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            objectMapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES, false);
             params = objectMapper.convertValue(payload, paramType);
         } catch (Exception e) {
             log.error("参数类型转换失败: {}", e.getMessage());

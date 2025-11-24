@@ -51,7 +51,7 @@ public class IntelligentAgentRouter {
         log.info("智能路由: 分析用户输入...");
 
         // 1. 获取所有可用的 Agent 信息
-        List<Agent> availableAgents = (List<Agent>) agentRegistry.getAllAgents();
+        List<Agent> availableAgents = new ArrayList<>(agentRegistry.getAllAgents());
 
         // 2. 使用 LLM 分析用户意图并选择 Agent
         AgentSelection selection = analyzeAndSelectAgent(userInput, availableAgents, context);
@@ -76,7 +76,6 @@ public class IntelligentAgentRouter {
 
         if (!paramResult.isPassed()) {
             log.warn("参数收集未通过, 缺少参数: {}", paramResult.getMissingParams());
-            task.putContext("paramCollectionFailed", true);
             task.putContext("missingParams", paramResult.getMissingParams());
             task.putContext("missingPrompt", paramResult.getMissingPrompt());
             task.putContext("paramValidationPassed", false);
@@ -231,7 +230,7 @@ public class IntelligentAgentRouter {
 
         // 添加 LLM 提取的参数
         if (selection.getExtractedParams() != null && !selection.getExtractedParams().isEmpty()) {
-            selection.getExtractedParams().forEach(task::putPayload);
+            selection.getExtractedParams().forEach(task::putExtractedParams);
         }
 
         // 设置上下文
