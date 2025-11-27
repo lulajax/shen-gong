@@ -1,8 +1,15 @@
+// 本地存储键名
+const STORAGE_KEYS = {
+    MESSAGES: 'shengong_chat_messages',
+    SESSION_ID: 'shengong_session_id',
+    USER_ID: 'shengong_user_id',
+    SESSIONS_LIST: 'shengong_sessions_list'  // 会话列表
+};
+
 // 全局变量
 let conversationMessages = [];
-let selectedImages = [];
 let userId = generateUserId();
-let sessionId = generateSessionId();
+let sessionId = loadOrCreateSessionId();
 
 // 初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -12,9 +19,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 初始化聊天
 function initializeChat() {
+    // 加载历史消息
+    loadChatHistory();
+
     // 自动调整输入框高度
     const messageInput = document.getElementById('messageInput');
     messageInput.addEventListener('input', autoResizeTextarea);
+
+    // 初始化发送按钮状态
+    updateSendButtonState();
 
     // 滚动到底部
     scrollToBottom();
@@ -52,10 +65,13 @@ function autoResizeTextarea() {
 function updateSendButtonState() {
     const messageInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
-    const hasText = messageInput.value.trim().length > 0;
-    const hasImages = selectedImages.length > 0;
 
-    sendBtn.disabled = !(hasText || hasImages);
+    if (!messageInput || !sendBtn) {
+        return;
+    }
+
+    const hasText = messageInput.value.trim().length > 0;
+    sendBtn.disabled = !hasText;
 }
 
 // 发送消息
@@ -63,32 +79,15 @@ async function sendMessage() {
     const messageInput = document.getElementById('messageInput');
     const messageText = messageInput.value.trim();
 
-    if (!messageText && selectedImages.length === 0) {
+    if (!messageText) {
         return;
     }
 
     // 构建消息对象 - 使用 ContentPart 格式
-    const contentParts = [];
-
-    // 添加文本内容
-    if (messageText) {
-        contentParts.push({
-            type: 'text',
-            text: messageText
-        });
-    }
-
-    // 添加图片内容
-    if (selectedImages.length > 0) {
-        selectedImages.forEach(imageData => {
-            contentParts.push({
-                type: 'image_url',
-                image_url: {
-                    url: imageData
-                }
-            });
-        });
-    }
+    const contentParts = [{
+        type: 'text',
+        text: messageText
+    }];
 
     const userMessage = {
         role: 'user',
@@ -99,16 +98,15 @@ async function sendMessage() {
     // 添加到对话历史
     conversationMessages.push(userMessage);
 
+    // 保存到本地存储
+    saveChatHistory();
+
     // 显示用户消息
-    displayUserMessage(messageText, selectedImages);
+    displayUserMessage(messageText);
 
     // 清空输入
     messageInput.value = '';
     autoResizeTextarea();
-
-    // 清空图片
-    const imagesToSend = [...selectedImages];
-    clearSelectedImages();
 
     // 滚动到底部
     scrollToBottom();
@@ -123,11 +121,6 @@ async function sendMessage() {
             sessionId: sessionId,
             messages: conversationMessages
         };
-
-        // 如果有图片，添加到请求中
-        if (imagesToSend.length > 0) {
-            requestBody.images = imagesToSend;
-        }
 
         // 调用后端API
         const response = await fetch('/api/v1/chat/send', {
@@ -163,6 +156,9 @@ async function sendMessage() {
             // 添加到对话历史
             conversationMessages.push(botMessage);
 
+            // 保存到本地存储
+            saveChatHistory();
+
             // 显示助手消息
             displayBotMessage(responseText);
         } else {
@@ -180,26 +176,16 @@ async function sendMessage() {
 }
 
 // 显示用户消息
-function displayUserMessage(text, images) {
+function displayUserMessage(text) {
     const messagesContainer = document.getElementById('chatMessages');
     const messageWrapper = document.createElement('div');
     messageWrapper.className = 'message-wrapper user-message';
-
-    let imagesHtml = '';
-    if (images && images.length > 0) {
-        const imagesList = images.map(img =>
-            `<img src="${img}" alt="用户上传的图片" class="message-image" onclick="previewImage('${img}')">`
-        ).join('');
-
-        imagesHtml = `<div class="message-images">${imagesList}</div>`;
-    }
 
     messageWrapper.innerHTML = `
         <div class="message-avatar user-avatar">我</div>
         <div class="message-content">
             <div class="message-bubble">
-                ${text ? `<p>${escapeHtml(text)}</p>` : ''}
-                ${imagesHtml}
+                <p>${escapeHtml(text)}</p>
             </div>
             <div class="message-time">${getCurrentTime()}</div>
         </div>
@@ -301,12 +287,22 @@ function getCurrentTime() {
 
 // 生成用户ID
 function generateUserId() {
-    let userId = localStorage.getItem('shengong_user_id');
+    let userId = localStorage.getItem(STORAGE_KEYS.USER_ID);
     if (!userId) {
         userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
-        localStorage.setItem('shengong_user_id', userId);
+        localStorage.setItem(STORAGE_KEYS.USER_ID, userId);
     }
     return userId;
+}
+
+// 加载或创建会话ID
+function loadOrCreateSessionId() {
+    let sessionId = localStorage.getItem(STORAGE_KEYS.SESSION_ID);
+    if (!sessionId) {
+        sessionId = generateSessionId();
+        localStorage.setItem(STORAGE_KEYS.SESSION_ID, sessionId);
+    }
+    return sessionId;
 }
 
 // 生成会话ID
@@ -314,105 +310,278 @@ function generateSessionId() {
     return 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
 }
 
-// 切换图片上传
-function toggleImageUpload() {
-    document.getElementById('imageInput').click();
+// 保存聊天历史到本地存储
+function saveChatHistory() {
+    try {
+        // 保存当前会话
+        const chatData = {
+            messages: conversationMessages,
+            sessionId: sessionId,
+            lastUpdate: Date.now()
+        };
+
+        // 保存到通用位置（用于页面刷新时加载）
+        localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(chatData));
+
+        // 同时保存到会话专用位置
+        const sessionKey = `shengong_session_${sessionId}`;
+        localStorage.setItem(sessionKey, JSON.stringify(chatData));
+
+        // 更新会话列表
+        updateSessionsList();
+    } catch (error) {
+        console.error('保存聊天历史失败:', error);
+        // 如果存储空间满了，清除旧数据
+        if (error.name === 'QuotaExceededError') {
+            console.warn('本地存储空间已满，清除旧数据');
+            clearOldChatHistory();
+        }
+    }
 }
 
-// 处理图片选择
-function handleImageSelect(event) {
-    const files = event.target.files;
+// 加载聊天历史
+function loadChatHistory() {
+    try {
+        const savedData = localStorage.getItem(STORAGE_KEYS.MESSAGES);
+        if (savedData) {
+            const chatData = JSON.parse(savedData);
 
-    if (files.length === 0) return;
+            // 检查是否是同一个会话
+            if (chatData.sessionId === sessionId) {
+                conversationMessages = chatData.messages || [];
 
-    // 限制图片数量
-    const maxImages = 4;
-    if (selectedImages.length + files.length > maxImages) {
-        alert(`最多只能上传${maxImages}张图片`);
+                // 重新渲染所有历史消息
+                renderChatHistory();
+            } else {
+                // 会话ID不匹配，开始新会话
+            }
+        }
+    } catch (error) {
+        console.error('加载聊天历史失败:', error);
+    }
+}
+
+// 渲染聊天历史
+function renderChatHistory() {
+    const messagesContainer = document.getElementById('chatMessages');
+    // 清空现有消息（保留欢迎消息除外）
+    messagesContainer.innerHTML = '';
+
+    if (conversationMessages.length === 0) {
+        // 显示欢迎消息
+        messagesContainer.innerHTML = `
+            <div class="message-wrapper bot-message">
+                <div class="message-avatar bot-avatar">AI</div>
+                <div class="message-content">
+                    <div class="message-bubble">
+                        <p>你好！我是智能助手，很高兴为您服务。有什么我可以帮助您的吗？</p>
+                    </div>
+                    <div class="message-time">刚刚</div>
+                </div>
+            </div>
+        `;
         return;
     }
 
-    // 处理每个文件
-    Array.from(files).forEach(file => {
-        // 检查文件类型
-        if (!file.type.startsWith('image/')) {
-            alert('请选择图片文件');
-            return;
+    // 渲染所有历史消息
+    conversationMessages.forEach(msg => {
+        // 提取文本内容
+        let textContent = '';
+
+        if (msg.content && Array.isArray(msg.content)) {
+            msg.content.forEach(part => {
+                if (part.type === 'text' && part.text) {
+                    textContent += part.text;
+                }
+            });
         }
 
-        // 检查文件大小 (限制5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            alert('图片大小不能超过5MB');
-            return;
+        // 根据角色显示消息
+        if (msg.role === 'user') {
+            displayUserMessage(textContent);
+        } else if (msg.role === 'assistant') {
+            displayBotMessage(textContent);
+        }
+    });
+}
+
+// 清除旧的聊天历史
+function clearOldChatHistory() {
+    localStorage.removeItem(STORAGE_KEYS.MESSAGES);
+    conversationMessages = [];
+}
+
+// 更新会话列表
+function updateSessionsList() {
+    try {
+        if (conversationMessages.length === 0) {
+            return; // 空会话不保存
         }
 
-        // 读取文件并转换为Base64
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const base64Data = e.target.result;
-            selectedImages.push(base64Data);
-            displayImagePreview(base64Data);
-            updateSendButtonState();
+        const sessionsList = getSessionsList();
+
+        // 生成会话摘要（取第一条用户消息的前30个字符）
+        let summary = '新对话';
+        const firstUserMsg = conversationMessages.find(msg => msg.role === 'user');
+        if (firstUserMsg && firstUserMsg.content) {
+            const textContent = firstUserMsg.content
+                .filter(part => part.type === 'text')
+                .map(part => part.text)
+                .join(' ');
+            summary = textContent.substring(0, 30) + (textContent.length > 30 ? '...' : '');
+        }
+
+        // 查找现有会话索引
+        const existingIndex = sessionsList.findIndex(s => s.sessionId === sessionId);
+
+        const sessionInfo = {
+            sessionId: sessionId,
+            summary: summary,
+            lastUpdate: Date.now(),
+            messageCount: conversationMessages.length
         };
-        reader.readAsDataURL(file);
+
+        if (existingIndex >= 0) {
+            // 更新现有会话
+            sessionsList[existingIndex] = sessionInfo;
+        } else {
+            // 添加新会话
+            sessionsList.unshift(sessionInfo);
+        }
+
+        // 只保留最近20个会话
+        if (sessionsList.length > 20) {
+            sessionsList.splice(20);
+        }
+
+        localStorage.setItem(STORAGE_KEYS.SESSIONS_LIST, JSON.stringify(sessionsList));
+    } catch (error) {
+        console.error('更新会话列表失败:', error);
+    }
+}
+
+// 获取会话列表
+function getSessionsList() {
+    try {
+        const data = localStorage.getItem(STORAGE_KEYS.SESSIONS_LIST);
+        return data ? JSON.parse(data) : [];
+    } catch (error) {
+        console.error('读取会话列表失败:', error);
+        return [];
+    }
+}
+
+// 加载指定会话
+function loadSession(targetSessionId) {
+    try {
+        // 保存当前会话
+        if (conversationMessages.length > 0) {
+            saveChatHistory();
+        }
+
+        // 从localStorage加载指定会话的数据
+        const storageKey = `shengong_session_${targetSessionId}`;
+        const savedData = localStorage.getItem(storageKey);
+
+        if (savedData) {
+            const chatData = JSON.parse(savedData);
+            conversationMessages = chatData.messages || [];
+            sessionId = targetSessionId;
+
+            // 更新当前会话ID
+            localStorage.setItem(STORAGE_KEYS.SESSION_ID, sessionId);
+            localStorage.setItem(STORAGE_KEYS.MESSAGES, savedData);
+
+            // 重新渲染
+            renderChatHistory();
+            scrollToBottom();
+
+            // 关闭菜单
+            toggleMenu();
+        } else {
+            alert('会话数据不存在');
+        }
+    } catch (error) {
+        console.error('加载会话失败:', error);
+        alert('加载会话失败');
+    }
+}
+
+// 删除指定会话
+function deleteSession(targetSessionId, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+
+    if (!confirm('确定要删除这个会话吗？')) {
+        return;
+    }
+
+    try {
+        // 从会话列表中删除
+        let sessionsList = getSessionsList();
+        sessionsList = sessionsList.filter(s => s.sessionId !== targetSessionId);
+        localStorage.setItem(STORAGE_KEYS.SESSIONS_LIST, JSON.stringify(sessionsList));
+
+        // 删除会话数据
+        const storageKey = `shengong_session_${targetSessionId}`;
+        localStorage.removeItem(storageKey);
+
+        // 如果删除的是当前会话，创建新会话
+        if (targetSessionId === sessionId) {
+            startNewChat();
+        } else {
+            // 刷新会话列表显示
+            renderSessionsList();
+        }
+    } catch (error) {
+        console.error('删除会话失败:', error);
+        alert('删除会话失败');
+    }
+}
+
+// 渲染会话列表到菜单
+function renderSessionsList() {
+    const sessionsList = getSessionsList();
+    const container = document.getElementById('sessionsListContainer');
+
+    if (!container) return;
+
+    if (sessionsList.length === 0) {
+        container.innerHTML = '<div class="sessions-empty">暂无历史会话</div>';
+        return;
+    }
+
+    let html = '';
+    sessionsList.forEach(session => {
+        const isActive = session.sessionId === sessionId;
+        const date = new Date(session.lastUpdate).toLocaleString('zh-CN', {
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        html += `
+            <div class="session-item ${isActive ? 'active' : ''}" onclick="loadSession('${session.sessionId}')">
+                <div class="session-info">
+                    <div class="session-summary">${escapeHtml(session.summary)}</div>
+                    <div class="session-meta">
+                        <span>${date}</span>
+                        <span>${session.messageCount}条消息</span>
+                    </div>
+                </div>
+                <button class="session-delete-btn" onclick="deleteSession('${session.sessionId}', event)" title="删除">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                </button>
+            </div>
+        `;
     });
 
-    // 清空input，允许重复选择相同文件
-    event.target.value = '';
-}
-
-// 显示图片预览
-function displayImagePreview(imageData) {
-    const container = document.getElementById('imagePreviewContainer');
-    const list = document.getElementById('imagePreviewList');
-
-    const previewItem = document.createElement('div');
-    previewItem.className = 'image-preview-item';
-    previewItem.dataset.image = imageData;
-
-    previewItem.innerHTML = `
-        <img src="${imageData}" alt="预览图片">
-        <button class="image-preview-remove" onclick="removeImagePreview(this)">×</button>
-    `;
-
-    list.appendChild(previewItem);
-    container.style.display = 'block';
-}
-
-// 移除图片预览
-function removeImagePreview(button) {
-    const previewItem = button.parentElement;
-    const imageData = previewItem.dataset.image;
-
-    // 从数组中移除
-    const index = selectedImages.indexOf(imageData);
-    if (index > -1) {
-        selectedImages.splice(index, 1);
-    }
-
-    // 移除DOM元素
-    previewItem.remove();
-
-    // 如果没有图片了，隐藏预览容器
-    if (selectedImages.length === 0) {
-        document.getElementById('imagePreviewContainer').style.display = 'none';
-    }
-
-    updateSendButtonState();
-}
-
-// 清空选中的图片
-function clearSelectedImages() {
-    selectedImages = [];
-    document.getElementById('imagePreviewList').innerHTML = '';
-    document.getElementById('imagePreviewContainer').style.display = 'none';
-    updateSendButtonState();
-}
-
-// 预览图片(全屏)
-function previewImage(src) {
-    // 简单实现：在新窗口打开
-    window.open(src, '_blank');
+    container.innerHTML = html;
 }
 
 // 切换菜单
@@ -420,8 +589,47 @@ function toggleMenu() {
     const overlay = document.getElementById('menuOverlay');
     const panel = document.getElementById('menuPanel');
 
+    const isOpening = !panel.classList.contains('active');
+
     overlay.classList.toggle('active');
     panel.classList.toggle('active');
+
+    // 打开菜单时渲染会话列表
+    if (isOpening) {
+        renderSessionsList();
+    }
+}
+
+// 新建对话
+function startNewChat() {
+    if (conversationMessages.length > 0) {
+        if (!confirm('确定要开始新对话吗？当前对话将被保存。')) {
+            return;
+        }
+    }
+
+    // 保存当前对话（如果有的话）
+    if (conversationMessages.length > 0) {
+        saveChatHistory();
+    }
+
+    // 清空当前对话
+    conversationMessages = [];
+
+    // 生成新的会话ID
+    sessionId = generateSessionId();
+    localStorage.setItem(STORAGE_KEYS.SESSION_ID, sessionId);
+
+    // 清除当前会话的存储
+    localStorage.removeItem(STORAGE_KEYS.MESSAGES);
+
+    // 重新渲染界面
+    renderChatHistory();
+
+    // 滚动到顶部
+    scrollToBottom();
+
+    toggleMenu();
 }
 
 // 清空对话
@@ -445,6 +653,10 @@ function clearChat() {
 
     // 生成新的会话ID
     sessionId = generateSessionId();
+    localStorage.setItem(STORAGE_KEYS.SESSION_ID, sessionId);
+
+    // 清除本地存储的聊天历史
+    localStorage.removeItem(STORAGE_KEYS.MESSAGES);
 
     toggleMenu();
 }
