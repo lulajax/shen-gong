@@ -121,13 +121,13 @@ public class AgentTask {
     }
 
     /**
-     * 检查是否存在参数 (自动从 payload 或 context 查找)
+     * 检查是否存在参数 (自动从 payload 查找)
      *
      * @param key 参数名
      * @return true 如果参数存在
      */
     public boolean hasParam(String key) {
-        return payload.containsKey(key) || context.containsKey(key);
+        return payload.containsKey(key) || payload.get(key) != null;
     }
 
     /**

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Agent智能助手</title>
+    <link rel="stylesheet" href="chat.css">
+</head>
+<body>
+    <div class="chat-container">
+        <!-- 顶部标题栏 -->
+        <div class="chat-header">
+            <div class="header-left">
+                <button class="back-btn" onclick="history.back()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="header-center">
+                <h1 class="chat-title">Agent智能助手</h1>
+                <span class="chat-status">在线</span>
+            </div>
+            <div class="header-right">
+                <button class="menu-btn" onclick="toggleMenu()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="5" r="1"/>
+                        <circle cx="12" cy="12" r="1"/>
+                        <circle cx="12" cy="19" r="1"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 聊天消息区域 -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- 欢迎消息 -->
+            <div class="message-wrapper bot-message">
+                <div class="message-avatar bot-avatar">AI</div>
+                <div class="message-content">
+                    <div class="message-bubble">
+                        <p>你好！我是Agent智能助手，很高兴为您服务。有什么我可以帮助您的吗？</p>
+                    </div>
+                    <div class="message-time">刚刚</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="chat-input-wrapper">
+            <div class="chat-input-container">
+                <!-- <button class="input-action-btn" onclick="toggleImageUpload()" title="上传图片">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                </button> -->
+
+                <div class="input-textarea-wrapper">
+                    <textarea
+                        id="messageInput"
+                        class="input-textarea"
+                        placeholder="输入消息..."
+                        rows="1"
+                        maxlength="2000"
+                    ></textarea>
+                    <input
+                        type="file"
+                        id="imageInput"
+                        accept="image/*"
+                        multiple
+                        style="display: none;"
+                        onchange="handleImageSelect(event)"
+                    >
+                </div>
+
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- 图片预览区域 -->
+            <div class="image-preview-container" id="imagePreviewContainer" style="display: none;">
+                <div class="image-preview-list" id="imagePreviewList"></div>
+            </div>
+        </div>
+
+        <!-- 加载指示器 -->
+        <div class="loading-indicator" id="loadingIndicator" style="display: none;">
+            <div class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 菜单弹窗 -->
+    <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
+    <div class="menu-panel" id="menuPanel">
+        <div class="menu-header">
+            <h3>菜单</h3>
+            <button class="close-btn" onclick="toggleMenu()">×</button>
+        </div>
+        <ul class="menu-list">
+            <li onclick="clearChat()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                清空对话
+            </li>
+            <!-- <li onclick="exportChat()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                导出对话
+            </li> -->
+            <!-- <li onclick="showSettings()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 1v6m0 6v6m-6-6h6m6 0h-6m-4.95-4.95l4.24 4.24m4.24 4.24l4.24 4.24m-12.72 0l4.24-4.24m4.24-4.24l4.24-4.24"/>
+                </svg>
+                设置
+            </li> -->
+        </ul>
+    </div>
+
+    <script src="chat.js"></script>
+</body>
+</html>

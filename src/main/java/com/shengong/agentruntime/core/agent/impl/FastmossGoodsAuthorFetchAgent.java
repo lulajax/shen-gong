@@ -83,10 +83,10 @@ public class FastmossGoodsAuthorFetchAgent extends AbstractAgent<FastmossGoodsAu
                 return AgentResult.error("Failed to fetch fastmoss goods author: " + toolResult.getError());
             }
 
-            return AgentResult.ok("FastmossGoodsAuthorFetch success", Map.of("taskId", taskId));
+            return AgentResult.ok("fastmoss采集任务创建成功，任务ID：" + taskId, Map.of("taskId", taskId));
         } catch (Exception e) {
             log.error("FastmossGoodsAuthorFetch failed: {}", e.getMessage(), e);
-            return AgentResult.error("FastmossGoodsAuthorFetch failed: " + e.getMessage());
+            return AgentResult.error("fastmoss采集任务创建失败，错误信息：" + e.getMessage());
         }
     }
 }
