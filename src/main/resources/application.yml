@@ -16,18 +16,6 @@ spring:
         use_sql_comments: true
     open-in-view: false
 
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      password:
-      timeout: 3000ms
-      lettuce:
-        pool:
-          max-active: 20
-          max-idle: 10
-          min-idle: 5
-
   cache:
     type: redis
     redis:
@@ -36,22 +24,27 @@ spring:
 
 # LangChain4j Configuration
 langchain4j:
-  google-ai-gemini:
-    api-key: ${GEMINI_API_KEY}
-    model-name: gemini-2.5-flash
-    temperature: 0.7
-    max-tokens: 8192
-    timeout: 60s
-    log-requests: true
-    log-responses: true
+  # 模型提供商选择: openai, gemini
+  model:
+    provider: openai           # 切换此值即可更换模型提供商
 
-  # OpenAI as fallback (optional)
+  # OpenAI 默认主模型
   open-ai:
     api-key: ${OPENAI_API_KEY:}
     model-name: gpt-4
     temperature: 0.7
     max-tokens: 2000
-    timeout: 60s
+    timeout: 120s
+    log-requests: true
+    log-responses: true
+
+  # Google Gemini 作为备用
+  google-ai-gemini:
+    api-key: ${GEMINI_API_KEY:}
+    model-name: gemini-2.5-flash
+    temperature: 0.7
+    max-tokens: 8192
+    timeout: 120s
     log-requests: true
     log-responses: true
 
@@ -129,7 +122,7 @@ logging:
 
 # Server Configuration
 server:
-  port: 8080
+  port: 8089
   servlet:
     context-path: /
   compression:

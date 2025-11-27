@@ -2,17 +2,17 @@ package com.shengong.agentruntime.llm;
 
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * LLM 客户端封装 - 支持 Google Gemini 多模态和代理配置
+ * LLM 客户端封装 - 支持多模态和代理配置
+ * <p>
+ * 模型提供商通过 langchain4j.model.provider 配置项切换
  *
  * @author 神工团队
  * @since 1.0.0
@@ -22,60 +22,16 @@ import java.util.List;
 public class LlmClient {
 
     private final ChatLanguageModel model;
-    private final String modelName;
+    private final String modelProvider;
 
     public LlmClient(
-            @Value("${langchain4j.google-ai-gemini.api-key}") String apiKey,
-            @Value("${langchain4j.google-ai-gemini.model-name:gemini-2.5-flash}") String modelName,
-            @Value("${langchain4j.google-ai-gemini.temperature:0.7}") Double temperature,
-            @Value("${langchain4j.google-ai-gemini.max-tokens:8192}") Integer maxTokens,
-            @Value("${langchain4j.google-ai-gemini.timeout:60s}") Duration timeout,
-            @Value("${langchain4j.proxy.enabled:false}") Boolean proxyEnabled,
-            @Value("${langchain4j.proxy.host:}") String proxyHost,
-            @Value("${langchain4j.proxy.port:0}") Integer proxyPort,
-            @Value("${langchain4j.proxy.type:HTTP}") String proxyType
+            ChatLanguageModel model,
+            @Value("${langchain4j.model.provider:open-ai}") String modelProvider
     ) {
-        this.modelName = modelName;
+        this.model = model;
+        this.modelProvider = modelProvider;
 
-        // 设置系统代理（如果启用）
-        if (proxyEnabled && proxyHost != null && !proxyHost.isEmpty() && proxyPort > 0) {
-            configureSystemProxy(proxyHost, proxyPort, proxyType);
-        }
-
-        // 构建 Gemini 模型
-        this.model = GoogleAiGeminiChatModel.builder()
-                .apiKey(apiKey)
-                .modelName(modelName)
-                .temperature(temperature)
-                .maxOutputTokens(maxTokens)
-                .timeout(timeout)
-                .logRequestsAndResponses(true)
-                .build();
-
-        log.info("LLM Client initialized: model={}, temperature={}, maxTokens={}, proxyEnabled={}",
-                modelName, temperature, maxTokens, proxyEnabled);
-    }
-
-    /**
-     * 配置系统代理
-     */
-    private void configureSystemProxy(String host, Integer port, String type) {
-        if ("SOCKS".equalsIgnoreCase(type)) {
-            // SOCKS 代理
-            System.setProperty("socksProxyHost", host);
-            System.setProperty("socksProxyPort", String.valueOf(port));
-            log.info("LLM Client SOCKS proxy configured: host={}, port={}", host, port);
-        } else {
-            // HTTP/HTTPS 代理
-            System.setProperty("http.proxyHost", host);
-            System.setProperty("http.proxyPort", String.valueOf(port));
-            System.setProperty("https.proxyHost", host);
-            System.setProperty("https.proxyPort", String.valueOf(port));
-            log.info("LLM Client HTTP/HTTPS proxy configured: host={}, port={}", host, port);
-        }
-
-        // 设置不需要代理的主机（可选）
-        System.setProperty("http.nonProxyHosts", "localhost|127.0.0.1|*.local");
+        log.info("LLM Client initialized with provider: {}", modelProvider);
     }
 
     /**
@@ -151,9 +107,9 @@ public class LlmClient {
     }
 
     /**
-     * 获取模型名称
+     * 获取模型提供商
      */
     public String getModelName() {
-        return modelName;
+        return modelProvider;
     }
 }
