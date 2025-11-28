@@ -454,6 +454,12 @@ function formatBotMessage(text) {
     // 转义HTML
     let formatted = escapeHtml(text);
 
+    // 先处理 Markdown 表格(在处理换行之前)
+    formatted = parseMarkdownTable(formatted);
+
+    // 处理 Markdown 列表(在处理换行之前)
+    formatted = parseMarkdownLists(formatted);
+
     // 支持换行
     formatted = formatted.replace(/\n/g, '<br>');
 
@@ -467,6 +473,93 @@ function formatBotMessage(text) {
     formatted = formatted.replace(/`(.+?)`/g, '<code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-family: monospace;">$1</code>');
 
     return formatted;
+}
+
+/**
+ * 解析 Markdown 表格
+ * @param {string} text - 包含 Markdown 表格的文本
+ * @returns {string} - 转换为 HTML 表格的文本
+ */
+function parseMarkdownTable(text) {
+    // Markdown 表格正则:匹配表格块(包括最后一行没有换行的情况)
+    const tableRegex = /(\|[^\n]+\|(?:\n|$))+/g;
+
+    return text.replace(tableRegex, function(tableText) {
+        const lines = tableText.trim().split('\n');
+
+        if (lines.length < 2) {
+            return tableText; // 不是有效的表格
+        }
+
+        // 检查第二行是否是分隔符(包含 :---: 或 --- 等)
+        if (!lines[1].match(/^\|?[\s:|-]+\|?$/)) {
+            return tableText; // 不是有效的表格
+        }
+
+        let html = '<table>';
+
+        // 解析表头(第一行)
+        const headers = lines[0].split('|').filter(cell => cell.trim());
+        html += '<thead><tr>';
+        headers.forEach(header => {
+            html += `<th>${header.trim()}</th>`;
+        });
+        html += '</tr></thead>';
+
+        // 解析表体(从第三行开始)
+        if (lines.length > 2) {
+            html += '<tbody>';
+            for (let i = 2; i < lines.length; i++) {
+                const cells = lines[i].split('|').filter(cell => cell.trim());
+                if (cells.length > 0) {
+                    html += '<tr>';
+                    cells.forEach(cell => {
+                        html += `<td>${cell.trim()}</td>`;
+                    });
+                    html += '</tr>';
+                }
+            }
+            html += '</tbody>';
+        }
+
+        html += '</table>';
+        return html;
+    });
+}
+
+/**
+ * 解析 Markdown 列表
+ * @param {string} text - 包含 Markdown 列表的文本
+ * @returns {string} - 转换为 HTML 列表的文本
+ */
+function parseMarkdownLists(text) {
+    // 先处理有序列表 (1. 2. 3.)
+    text = text.replace(/(?:^|\n)((?:\d+\.\s+.+(?:\n|$))+)/g, function(match, listBlock) {
+        const items = listBlock.trim().split('\n').filter(line => line.trim());
+        let html = '<ol>';
+        items.forEach(item => {
+            // 移除序号和空格
+            const content = item.replace(/^\d+\.\s+/, '');
+            html += `<li>${content}</li>`;
+        });
+        html += '</ol>';
+        return '\n' + html + '\n';
+    });
+
+    // 处理无序列表 (- 或 *)
+    text = text.replace(/(?:^|\n)((?:[-*]\s+.+(?:\n|$))+)/g, function(match, listBlock) {
+        const items = listBlock.trim().split('\n').filter(line => line.trim());
+        let html = '<ul>';
+        items.forEach(item => {
+            // 移除标记和空格
+            const content = item.replace(/^[-*]\s+/, '');
+            html += `<li>${content}</li>`;
+        });
+        html += '</ul>';
+        return '\n' + html + '\n';
+    });
+
+    return text;
 }
 
 // HTML转义
@@ -498,6 +591,12 @@ function hideLoading() {
 function getCurrentTime() {
     const now = new Date();
     return now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+
+// 格式化时间戳
+function formatTimestamp(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 }
 
 // 生成用户ID
@@ -613,9 +712,9 @@ function renderChatHistory() {
 
         // 根据角色显示消息
         if (msg.role === 'user') {
-            displayUserMessage(textContent);
+            displayUserMessage(textContent, msg.timestamp);
         } else if (msg.role === 'assistant') {
-            displayBotMessage(textContent);
+            displayBotMessage(textContent, msg.timestamp);
         }
     });
 }

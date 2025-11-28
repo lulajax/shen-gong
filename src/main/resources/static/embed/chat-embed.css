@@ -685,6 +685,97 @@ body {
     justify-content: center;
 }
 
+/* Markdown 表格样式 */
+.message-bubble table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0;
+    font-size: 14px;
+    background: var(--bg-color);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.message-bubble thead {
+    background: var(--primary-color);
+    color: white;
+}
+
+.message-bubble th,
+.message-bubble td {
+    padding: 10px 12px;
+    text-align: left;
+    border: 1px solid var(--border-color);
+}
+
+.message-bubble th {
+    font-weight: 600;
+    text-align: center;
+}
+
+.message-bubble td {
+    text-align: center;
+}
+
+.message-bubble tbody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.message-bubble tbody tr:hover {
+    background: rgba(24, 144, 255, 0.08);
+}
+
+/* 用户消息中的表格(白色背景) */
+.user-message .message-bubble table {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.user-message .message-bubble thead {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.user-message .message-bubble th,
+.user-message .message-bubble td {
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.user-message .message-bubble tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.user-message .message-bubble tbody tr:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Markdown 列表样式 */
+.message-bubble ul,
+.message-bubble ol {
+    margin: 8px 0;
+    padding-left: 24px;
+}
+
+.message-bubble li {
+    margin: 4px 0;
+    line-height: 1.6;
+}
+
+.message-bubble ul {
+    list-style-type: disc;
+}
+
+.message-bubble ol {
+    list-style-type: decimal;
+}
+
+.message-bubble ul li::marker {
+    color: var(--primary-color);
+}
+
+.message-bubble ol li::marker {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
 /* 自定义弹窗组件 */
 .modal-overlay {
     position: fixed;
