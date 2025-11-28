@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>神工聊天组件集成测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .test-container {
+            background: white;
+            border-radius: 20px;
+            padding: 60px 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 40px;
+        }
+
+        .info-box {
+            background: #f5f7fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .info-item {
+            margin: 10px 0;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #333;
+            margin-right: 10px;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: "Monaco", "Courier New", monospace;
+            font-size: 13px;
+            text-align: left;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        .success-badge {
+            display: inline-block;
+            background: #52c41a;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .notice {
+            background: #fff7e6;
+            border-left: 4px solid #faad14;
+            padding: 15px;
+            margin-top: 30px;
+            border-radius: 4px;
+            text-align: left;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .notice strong {
+            color: #faad14;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎉 神工聊天组件</h1>
+        <p class="subtitle">跨域嵌入式聊天 Widget - 集成测试</p>
+
+        <div class="info-box">
+            <div class="info-item">
+                <span class="info-label">状态:</span>
+                <span class="success-badge">已加载</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Widget SDK:</span>
+                <span id="sdkVersion">加载中...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">API 地址:</span>
+                <span>http://localhost:8089</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">用户 ID:</span>
+                <span>test_user_123456</span>
+            </div>
+        </div>
+
+        <div class="code-block">
+ShengongChat.init({
+  userId: 'test_user_123456',
+  apiBase: 'http://localhost:8089'
+});
+        </div>
+
+        <div class="notice">
+            <strong>💡 使用说明：</strong><br>
+            • 查看右下角是否出现聊天按钮<br>
+            • 点击按钮打开聊天窗口<br>
+            • 尝试发送消息测试功能<br>
+            • 按 ESC 键可关闭窗口
+        </div>
+    </div>
+
+    <!-- 引入神工聊天组件 Widget SDK -->
+    <script src="/widget/shengong-chat-widget.js"></script>
+    <script>
+        // 等待 SDK 加载完成
+        window.addEventListener('load', function() {
+            // 显示 SDK 版本
+            if (window.ShengongChat) {
+                document.getElementById('sdkVersion').textContent =
+                    'v' + window.ShengongChat.version + ' ✓';
+
+                // 初始化聊天组件
+                window.ShengongChat.init({
+                    userId: 'test_user_123456',
+                    apiBase: 'http://localhost:8089'
+                });
+
+                console.log('神工聊天组件已初始化');
+            } else {
+                document.getElementById('sdkVersion').textContent = '加载失败 ✗';
+                console.error('神工聊天组件 SDK 加载失败');
+            }
+        });
+    </script>
+</body>
+</html>

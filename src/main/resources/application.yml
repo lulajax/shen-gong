@@ -130,3 +130,6 @@ server:
   error:
     include-message: always
     include-binding-errors: always
+
+# CORS 配置说明
+# CORS 策略在 CorsConfig.java 中配置

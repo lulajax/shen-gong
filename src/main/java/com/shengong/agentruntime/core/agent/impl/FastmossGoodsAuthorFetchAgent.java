@@ -69,7 +69,7 @@ public class FastmossGoodsAuthorFetchAgent extends AbstractAgent<FastmossGoodsAu
             String taskId = UUID.randomUUID().toString();
             Map<String, Object> requestBody = Map.of(
                 "region", params.getRegion(),
-                "category", params.getCategory(),
+                "productCategory", params.getCategory(),
                 "taskId", taskId
             );
             ToolResult toolResult = liveTool.invoke(Map.of(

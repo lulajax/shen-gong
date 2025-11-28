@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>智能助手</title>
+    <link rel="stylesheet" href="chat-embed.css">
+</head>
+<body>
+    <div class="chat-container">
+        <!-- 顶部标题栏（嵌入式简化版） -->
+        <div class="chat-header">
+            <div class="header-center">
+                <h1 class="chat-title">智能助手</h1>
+                <span class="chat-status">在线</span>
+            </div>
+            <div class="header-right">
+                <button class="menu-btn" onclick="toggleMenu()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="5" r="1"/>
+                        <circle cx="12" cy="12" r="1"/>
+                        <circle cx="12" cy="19" r="1"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 聊天消息区域 -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- 欢迎消息 -->
+            <div class="message-wrapper bot-message">
+                <div class="message-avatar bot-avatar">AI</div>
+                <div class="message-content">
+                    <div class="message-bubble">
+                        <p>你好！我是你的智能助手，很高兴为您服务。有什么我可以帮助您的吗？</p>
+                    </div>
+                    <div class="message-time">刚刚</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="chat-input-wrapper">
+            <div class="chat-input-container">
+                <div class="input-textarea-wrapper">
+                    <textarea
+                        id="messageInput"
+                        class="input-textarea"
+                        placeholder="输入消息..."
+                        rows="1"
+                        maxlength="2000"
+                    ></textarea>
+                </div>
+
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 加载指示器 -->
+        <div class="loading-indicator" id="loadingIndicator" style="display: none;">
+            <div class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 菜单弹窗 -->
+    <div class="menu-overlay" id="menuOverlay" onclick="toggleMenu()"></div>
+    <div class="menu-panel" id="menuPanel">
+        <div class="menu-header">
+            <h3>菜单</h3>
+            <button class="close-btn" onclick="toggleMenu()">×</button>
+        </div>
+        <ul class="menu-list">
+            <li onclick="startNewChat()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                新建对话
+            </li>
+        </ul>
+
+        <!-- 历史会话列表 -->
+        <div class="sessions-section">
+            <div class="sessions-header">历史会话</div>
+            <div class="sessions-list" id="sessionsListContainer">
+                <!-- 会话列表将在这里动态生成 -->
+            </div>
+        </div>
+
+        <!-- 其他菜单项 -->
+        <ul class="menu-list menu-list-bottom">
+            <li onclick="clearChat()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                </svg>
+                清空当前对话
+            </li>
+        </ul>
+    </div>
+
+    <script src="chat-embed.js"></script>
+</body>
+</html>
