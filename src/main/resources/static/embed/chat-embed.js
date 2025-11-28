@@ -410,22 +410,41 @@ function displayUserMessage(text) {
 }
 
 // 显示助手消息
-function displayBotMessage(text) {
+function displayBotMessage(text, timestamp = null) {
     const messagesContainer = document.getElementById('chatMessages');
     const messageWrapper = document.createElement('div');
     messageWrapper.className = 'message-wrapper bot-message';
+
+    const timeStr = timestamp ? formatTimestamp(timestamp) : getCurrentTime();
 
     messageWrapper.innerHTML = `
         <div class="message-avatar bot-avatar">AI</div>
         <div class="message-content">
             <div class="message-bubble">
-                <p>${formatBotMessage(text)}</p>
+                ${formatBotMessage(text)}
             </div>
-            <div class="message-time">${getCurrentTime()}</div>
+            <div class="message-time">${timeStr}</div>
         </div>
     `;
 
     messagesContainer.appendChild(messageWrapper);
+
+    // 初始化表格滚动监听
+    initTableScrollListener(messageWrapper);
+}
+
+// 初始化表格滚动监听器
+function initTableScrollListener(container) {
+    const tableWrappers = container.querySelectorAll('.table-wrapper');
+    tableWrappers.forEach(wrapper => {
+        wrapper.addEventListener('scroll', function() {
+            if (this.scrollLeft > 0) {
+                this.classList.add('scrolled');
+            } else {
+                this.classList.remove('scrolled');
+            }
+        });
+    });
 }
 
 // 显示错误消息
@@ -496,7 +515,7 @@ function parseMarkdownTable(text) {
             return tableText; // 不是有效的表格
         }
 
-        let html = '<table>';
+        let html = '<div class="table-wrapper"><table>';
 
         // 解析表头(第一行)
         const headers = lines[0].split('|').filter(cell => cell.trim());
@@ -522,7 +541,7 @@ function parseMarkdownTable(text) {
             html += '</tbody>';
         }
 
-        html += '</table>';
+        html += '</table></div>';
         return html;
     });
 }

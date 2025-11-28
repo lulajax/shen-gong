@@ -639,6 +639,37 @@ body {
     }
 }
 
+/* 移动端表格优化 */
+@media screen and (max-width: 640px) {
+    /* 缩小表格字体和间距 */
+    .message-bubble table {
+        font-size: 12px;
+    }
+
+    .message-bubble th,
+    .message-bubble td {
+        padding: 6px 8px;
+        white-space: nowrap; /* 防止文字换行 */
+    }
+
+    /* 表格滚动提示 */
+    .table-wrapper::after {
+        content: '← 左右滑动查看更多 →';
+        display: block;
+        text-align: center;
+        font-size: 11px;
+        color: var(--text-light);
+        padding: 4px 0;
+        background: var(--bg-color);
+        border-top: 1px solid var(--border-color);
+    }
+
+    /* 滚动后隐藏提示 */
+    .table-wrapper.scrolled::after {
+        content: none;
+    }
+}
+
 /* 安全区域适配 (iPhone X 等) */
 @supports (padding: max(0px)) {
     .chat-header {
@@ -694,6 +725,40 @@ body {
     background: var(--bg-color);
     border-radius: 6px;
     overflow: hidden;
+}
+
+/* 表格外层容器 - 支持横向滚动 */
+.table-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+    margin: 12px 0;
+    border-radius: 6px;
+    -webkit-overflow-scrolling: touch; /* iOS 流畅滚动 */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.table-wrapper::-webkit-scrollbar {
+    height: 6px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+/* 表格内的 table 移除 margin */
+.table-wrapper table {
+    margin: 0;
+    min-width: 100%;
 }
 
 .message-bubble thead {

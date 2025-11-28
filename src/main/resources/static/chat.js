@@ -326,6 +326,9 @@ function displayBotMessage(text, timestamp = null) {
     `;
 
     messagesContainer.appendChild(messageWrapper);
+
+    // 初始化表格滚动监听
+    initTableScrollListener(messageWrapper);
 }
 
 // 显示错误消息
@@ -345,6 +348,23 @@ function displayErrorMessage(text) {
     `;
 
     messagesContainer.appendChild(messageWrapper);
+
+    // 初始化表格滚动监听
+    initTableScrollListener(messageWrapper);
+}
+
+// 初始化表格滚动监听器
+function initTableScrollListener(container) {
+    const tableWrappers = container.querySelectorAll('.table-wrapper');
+    tableWrappers.forEach(wrapper => {
+        wrapper.addEventListener('scroll', function() {
+            if (this.scrollLeft > 0) {
+                this.classList.add('scrolled');
+            } else {
+                this.classList.remove('scrolled');
+            }
+        });
+    });
 }
 
 // 格式化助手消息(支持简单的Markdown)
@@ -406,7 +426,7 @@ function parseMarkdownTable(text) {
             return tableText; // 不是有效的表格
         }
 
-        let html = '<table>';
+        let html = '<div class="table-wrapper"><table>';
 
         // 解析表头(第一行)
         const headers = lines[0].split('|').filter(cell => cell.trim());
@@ -432,7 +452,7 @@ function parseMarkdownTable(text) {
             html += '</tbody>';
         }
 
-        html += '</table>';
+        html += '</table></div>';
         return html;
     });
 }
