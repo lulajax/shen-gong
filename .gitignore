@@ -44,3 +44,4 @@ application-secret.yml
 node_modules/
 GEMINI.md
 CLAUDE.md
+upload-to-oss.sh

@@ -1,4 +1,111 @@
 // ============================================
+// 自定义弹窗函数
+// ============================================
+
+/**
+ * 显示自定义 Alert 弹窗
+ * @param {string} message - 提示消息
+ * @param {string} title - 标题（可选）
+ */
+function showAlert(message, title = '提示') {
+    const overlay = document.getElementById('modalOverlay');
+    const titleEl = document.getElementById('modalTitle');
+    const bodyEl = document.getElementById('modalBody');
+    const footerEl = document.getElementById('modalFooter');
+
+    titleEl.textContent = title;
+    bodyEl.textContent = message;
+    footerEl.innerHTML = `
+        <button class="modal-btn modal-btn-confirm" onclick="closeModal()">确定</button>
+    `;
+
+    overlay.classList.add('active');
+
+    // 点击遮罩层关闭
+    overlay.onclick = function(e) {
+        if (e.target === overlay) {
+            closeModal();
+        }
+    };
+
+    // ESC 键关闭
+    document.addEventListener('keydown', handleModalEscape);
+}
+
+/**
+ * 显示自定义 Confirm 弹窗
+ * @param {string} message - 确认消息
+ * @param {Function} onConfirm - 确认回调
+ * @param {string} title - 标题（可选）
+ * @param {boolean} isDanger - 是否为危险操作（删除等）
+ */
+function showConfirm(message, onConfirm, title = '确认', isDanger = false) {
+    const overlay = document.getElementById('modalOverlay');
+    const titleEl = document.getElementById('modalTitle');
+    const bodyEl = document.getElementById('modalBody');
+    const footerEl = document.getElementById('modalFooter');
+
+    titleEl.textContent = title;
+    bodyEl.textContent = message;
+
+    const confirmBtnClass = isDanger ? 'modal-btn-danger' : 'modal-btn-confirm';
+    const confirmBtnText = isDanger ? '删除' : '确定';
+
+    footerEl.innerHTML = `
+        <button class="modal-btn modal-btn-cancel" onclick="closeModal()">取消</button>
+        <button class="modal-btn ${confirmBtnClass}" onclick="handleModalConfirm()">${confirmBtnText}</button>
+    `;
+
+    overlay.classList.add('active');
+
+    // 保存回调函数
+    window.__modalConfirmCallback = onConfirm;
+
+    // 点击遮罩层关闭
+    overlay.onclick = function(e) {
+        if (e.target === overlay) {
+            closeModal();
+        }
+    };
+
+    // ESC 键关闭
+    document.addEventListener('keydown', handleModalEscape);
+}
+
+/**
+ * 关闭弹窗
+ */
+function closeModal() {
+    const overlay = document.getElementById('modalOverlay');
+    overlay.classList.remove('active');
+
+    // 清理回调
+    window.__modalConfirmCallback = null;
+
+    // 移除 ESC 监听
+    document.removeEventListener('keydown', handleModalEscape);
+}
+
+/**
+ * 处理确认按钮点击
+ */
+function handleModalConfirm() {
+    if (window.__modalConfirmCallback) {
+        window.__modalConfirmCallback();
+    }
+    closeModal();
+}
+
+/**
+ * 处理 ESC 键
+ */
+function handleModalEscape(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+}
+
+// ============================================
 // 嵌入式配置 - 支持跨域嵌入和 postMessage 通信
 // ============================================
 
@@ -607,11 +714,11 @@ function loadSession(targetSessionId) {
             // 关闭菜单
             toggleMenu();
         } else {
-            alert('会话数据不存在');
+            showAlert('会话数据不存在', '错误');
         }
     } catch (error) {
         console.error('加载会话失败:', error);
-        alert('加载会话失败');
+        showAlert('加载会话失败', '错误');
     }
 }
 
@@ -621,31 +728,29 @@ function deleteSession(targetSessionId, event) {
         event.stopPropagation();
     }
 
-    if (!confirm('确定要删除这个会话吗？')) {
-        return;
-    }
+    showConfirm('确定要删除这个会话吗？', function() {
+        try {
+            // 从会话列表中删除
+            let sessionsList = getSessionsList();
+            sessionsList = sessionsList.filter(s => s.sessionId !== targetSessionId);
+            localStorage.setItem(STORAGE_KEYS.SESSIONS_LIST, JSON.stringify(sessionsList));
 
-    try {
-        // 从会话列表中删除
-        let sessionsList = getSessionsList();
-        sessionsList = sessionsList.filter(s => s.sessionId !== targetSessionId);
-        localStorage.setItem(STORAGE_KEYS.SESSIONS_LIST, JSON.stringify(sessionsList));
+            // 删除会话数据
+            const storageKey = `shengong_session_${targetSessionId}`;
+            localStorage.removeItem(storageKey);
 
-        // 删除会话数据
-        const storageKey = `shengong_session_${targetSessionId}`;
-        localStorage.removeItem(storageKey);
-
-        // 如果删除的是当前会话，创建新会话
-        if (targetSessionId === sessionId) {
-            startNewChat();
-        } else {
-            // 刷新会话列表显示
-            renderSessionsList();
+            // 如果删除的是当前会话，创建新会话
+            if (targetSessionId === sessionId) {
+                startNewChat();
+            } else {
+                // 刷新会话列表显示
+                renderSessionsList();
+            }
+        } catch (error) {
+            console.error('删除会话失败:', error);
+            showAlert('删除会话失败', '错误');
         }
-    } catch (error) {
-        console.error('删除会话失败:', error);
-        alert('删除会话失败');
-    }
+    }, '删除会话', true);
 }
 
 // 渲染会话列表到菜单
@@ -711,68 +816,71 @@ function toggleMenu() {
 // 新建对话
 function startNewChat() {
     if (conversationMessages.length > 0) {
-        if (!confirm('确定要开始新对话吗？当前对话将被保存。')) {
-            return;
-        }
+        showConfirm('确定要开始新对话吗？当前对话将被保存。', function() {
+            // 保存当前对话
+            saveChatHistory();
+
+            // 清空当前对话
+            conversationMessages = [];
+
+            // 生成新的会话ID
+            sessionId = generateSessionId();
+            localStorage.setItem(STORAGE_KEYS.SESSION_ID, sessionId);
+
+            // 清除当前会话的存储
+            localStorage.removeItem(STORAGE_KEYS.MESSAGES);
+
+            // 重新渲染界面
+            renderChatHistory();
+
+            // 滚动到顶部
+            scrollToBottom();
+
+            toggleMenu();
+        }, '开始新对话');
+    } else {
+        // 直接开始新对话
+        conversationMessages = [];
+        sessionId = generateSessionId();
+        localStorage.setItem(STORAGE_KEYS.SESSION_ID, sessionId);
+        localStorage.removeItem(STORAGE_KEYS.MESSAGES);
+        renderChatHistory();
+        scrollToBottom();
+        toggleMenu();
     }
-
-    // 保存当前对话（如果有的话）
-    if (conversationMessages.length > 0) {
-        saveChatHistory();
-    }
-
-    // 清空当前对话
-    conversationMessages = [];
-
-    // 生成新的会话ID
-    sessionId = generateSessionId();
-    localStorage.setItem(STORAGE_KEYS.SESSION_ID, sessionId);
-
-    // 清除当前会话的存储
-    localStorage.removeItem(STORAGE_KEYS.MESSAGES);
-
-    // 重新渲染界面
-    renderChatHistory();
-
-    // 滚动到顶部
-    scrollToBottom();
-
-    toggleMenu();
 }
 
 // 清空对话
 function clearChat() {
-    if (!confirm('确定要清空所有对话吗?')) {
-        return;
-    }
-
-    conversationMessages = [];
-    document.getElementById('chatMessages').innerHTML = `
-        <div class="message-wrapper bot-message">
-            <div class="message-avatar bot-avatar">AI</div>
-            <div class="message-content">
-                <div class="message-bubble">
-                    <p>对话已清空。有什么我可以帮助您的吗？</p>
+    showConfirm('确定要清空所有对话吗?', function() {
+        conversationMessages = [];
+        document.getElementById('chatMessages').innerHTML = `
+            <div class="message-wrapper bot-message">
+                <div class="message-avatar bot-avatar">AI</div>
+                <div class="message-content">
+                    <div class="message-bubble">
+                        <p>对话已清空。有什么我可以帮助您的吗？</p>
+                    </div>
+                    <div class="message-time">${getCurrentTime()}</div>
                 </div>
-                <div class="message-time">${getCurrentTime()}</div>
             </div>
-        </div>
-    `;
+        `;
 
-    // 生成新的会话ID
-    sessionId = generateSessionId();
-    localStorage.setItem(STORAGE_KEYS.SESSION_ID, sessionId);
+        // 生成新的会话ID
+        sessionId = generateSessionId();
+        localStorage.setItem(STORAGE_KEYS.SESSION_ID, sessionId);
 
-    // 清除本地存储的聊天历史
-    localStorage.removeItem(STORAGE_KEYS.MESSAGES);
+        // 清除本地存储的聊天历史
+        localStorage.removeItem(STORAGE_KEYS.MESSAGES);
 
-    toggleMenu();
+        toggleMenu();
+    }, '清空对话', true);
 }
 
 // 导出对话
 function exportChat() {
     if (conversationMessages.length === 0) {
-        alert('暂无对话内容可导出');
+        showAlert('暂无对话内容可导出');
         return;
     }
 
@@ -811,6 +919,6 @@ function exportChat() {
 
 // 显示设置
 function showSettings() {
-    alert('设置功能开发中...');
+    showAlert('设置功能开发中...', '设置');
     toggleMenu();
 }

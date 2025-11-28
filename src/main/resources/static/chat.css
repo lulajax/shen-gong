@@ -671,3 +671,145 @@ body {
         background: #2d2d2d;
     }
 }
+
+/* 自定义弹窗组件 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    animation: modalFadeIn 0.2s ease-out;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-dialog {
+    background: white;
+    border-radius: 12px;
+    min-width: 320px;
+    max-width: 400px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.modal-body {
+    padding: 24px;
+    color: var(--text-secondary);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.modal-footer {
+    padding: 16px 24px;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    border-top: 1px solid var(--border-color);
+}
+
+.modal-btn {
+    padding: 8px 20px;
+    border-radius: 6px;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.modal-btn-cancel {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.modal-btn-cancel:hover {
+    background: var(--bg-color);
+}
+
+.modal-btn-cancel:active {
+    transform: scale(0.98);
+}
+
+.modal-btn-confirm {
+    background: var(--primary-color);
+    color: white;
+}
+
+.modal-btn-confirm:hover {
+    background: var(--primary-dark);
+}
+
+.modal-btn-confirm:active {
+    transform: scale(0.98);
+}
+
+.modal-btn-danger {
+    background: #ff4d4f;
+    color: white;
+}
+
+.modal-btn-danger:hover {
+    background: #ff7875;
+}
+
+.modal-btn-danger:active {
+    transform: scale(0.98);
+}
+
+/* 暗色模式下的弹窗样式 */
+@media (prefers-color-scheme: dark) {
+    .modal-dialog {
+        background: #2d2d2d;
+    }
+
+    .modal-btn-cancel {
+        background: transparent;
+        color: var(--text-secondary);
+    }
+
+    .modal-btn-cancel:hover {
+        background: #3d3d3d;
+    }
+}
