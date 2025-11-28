@@ -1,12 +1,11 @@
 package com.shengong.agentruntime.entity;
 
+import com.shengong.agentruntime.converter.JsonMapConverter;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -62,16 +61,20 @@ public class TaskExecutionEntity {
 
     /**
      * 任务输入 payload (JSON)
+     * 使用 TEXT 类型以兼容 MySQL 5.6（不支持 JSON 类型）
+     * 通过 JsonMapConverter 自动处理序列化/反序列化
      */
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "payload", columnDefinition = "JSON")
+    @Convert(converter = JsonMapConverter.class)
+    @Column(name = "payload", columnDefinition = "TEXT")
     private Map<String, Object> payload;
 
     /**
      * 执行结果 (JSON)
+     * 使用 TEXT 类型以兼容 MySQL 5.6（不支持 JSON 类型）
+     * 通过 JsonMapConverter 自动处理序列化/反序列化
      */
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "result", columnDefinition = "JSON")
+    @Convert(converter = JsonMapConverter.class)
+    @Column(name = "result", columnDefinition = "TEXT")
     private Map<String, Object> result;
 
     @Column(name = "error_message", columnDefinition = "TEXT")
