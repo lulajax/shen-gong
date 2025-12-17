@@ -78,10 +78,10 @@ public class OrderDailyStatisticsAgent extends AbstractAgent<OrderDailyStatistic
 
             // 参数验证
             if (dateRange == null || dateRange.size() != 2) {
-                return AgentResult.error("dateRange 必须包含两个日期：开始日期和结束日期");
+                return AgentResult.error("参数错误：日期范围必须包含：开始日期和结束日期");
             }
             if (regions == null || regions.isEmpty()) {
-                return AgentResult.error("regions 不能为空");
+                return AgentResult.error("参数错误：销售地区不能为空");
             }
 
             // 构建 HTTP 请求参数
