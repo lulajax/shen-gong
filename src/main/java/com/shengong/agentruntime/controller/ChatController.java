@@ -1,7 +1,9 @@
 package com.shengong.agentruntime.controller;
 
+import com.shengong.agentruntime.collaboration.MultiAgentCollaborationService;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
+import com.shengong.agentruntime.model.collaboration.ExecutionPlan;
 import com.shengong.agentruntime.service.IntelligentAgentRouter;
 import com.shengong.agentruntime.service.RouterAgentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,6 +35,7 @@ public class ChatController {
     private final IntelligentAgentRouter intelligentRouter;
     private final RouterAgentService routerAgentService;
     private final com.shengong.agentruntime.service.AgentRegistry agentRegistry;
+    private final MultiAgentCollaborationService multiAgentCollaborationService;
 
     /**
      * 智能对话接口 - 自动路由到合适的 Agent
@@ -136,6 +139,72 @@ public class ChatController {
         return ResponseEntity.ok(errorResponse);
     }
 
+    /**
+     * 预览多Agent执行计划 (不执行)
+     */
+    @PostMapping("/preview-plan")
+    @Operation(summary = "预览执行计划", description = "生成但不执行多Agent协同计划,用于预览任务分解结果")
+    public ResponseEntity<ExecutionPlanResponse> previewPlan(@RequestBody ChatRequest request) {
+        try {
+            // 提取用户输入
+            String userInput = extractLastUserMessage(request.getMessages());
+            if (userInput == null || userInput.trim().isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            // 生成执行计划
+            ExecutionPlan plan = multiAgentCollaborationService.previewPlan(
+                    userInput,
+                    request.getContext()
+            );
+
+            ExecutionPlanResponse response = new ExecutionPlanResponse();
+            response.setPlan(plan);
+            response.setSuccess(true);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("预览执行计划失败: {}", e.getMessage(), e);
+            ExecutionPlanResponse errorResponse = new ExecutionPlanResponse();
+            errorResponse.setSuccess(false);
+            errorResponse.setError("生成执行计划失败: " + e.getMessage());
+            return ResponseEntity.ok(errorResponse);
+        }
+    }
+
+    /**
+     * 强制使用多Agent模式执行
+     */
+    @PostMapping("/send-multi")
+    @Operation(summary = "多Agent模式", description = "强制使用多Agent协同模式处理请求")
+    public ResponseEntity<ChatResponse> sendMultiAgent(@RequestBody ChatRequest request) {
+        // 强制启用多Agent模式
+        if (request.getContext() == null) {
+            request.setContext(new java.util.HashMap<>());
+        }
+        request.getContext().put("forceMultiAgent", true);
+
+        // 调用常规发送消息接口
+        return sendMessage(request);
+    }
+
+    /**
+     * 提取最后一条用户消息
+     */
+    private String extractLastUserMessage(List<IntelligentAgentRouter.ConversationMessage> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return null;
+        }
+
+        IntelligentAgentRouter.ConversationMessage lastMsg = messages.get(messages.size() - 1);
+        if ("user".equals(lastMsg.getRole())) {
+            return lastMsg.getTextContent();
+        }
+
+        return null;
+    }
+
     // --- DTOs ---
 
     @Data
@@ -170,5 +239,12 @@ public class ChatController {
         private double confidence;
         private String reason;
         private Map<String, Object> payload;
+    }
+
+    @Data
+    public static class ExecutionPlanResponse {
+        private ExecutionPlan plan;
+        private boolean success;
+        private String error;
     }
 }

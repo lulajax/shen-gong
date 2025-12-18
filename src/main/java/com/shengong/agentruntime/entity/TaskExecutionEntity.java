@@ -24,7 +24,8 @@ import java.util.Map;
         @Index(name = "idx_user_id", columnList = "userId"),
         @Index(name = "idx_started_at", columnList = "startedAt"),
         @Index(name = "idx_task_type", columnList = "taskType"),
-        @Index(name = "idx_domain", columnList = "domain")
+        @Index(name = "idx_domain", columnList = "domain"),
+        @Index(name = "idx_parent_task_id", columnList = "parentTaskId")
 })
 @NoArgsConstructor
 @AllArgsConstructor
@@ -91,6 +92,25 @@ public class TaskExecutionEntity {
 
     @Column(name = "latency_ms")
     private Integer latencyMs;
+
+    /**
+     * 父任务ID (如果是子任务,则指向父多Agent任务的ID)
+     */
+    @Column(name = "parent_task_id", length = 100)
+    private String parentTaskId;
+
+    /**
+     * 是否是子任务
+     */
+    @Builder.Default
+    @Column(name = "is_sub_task")
+    private Boolean isSubTask = false;
+
+    /**
+     * 子任务执行顺序
+     */
+    @Column(name = "task_order")
+    private Integer taskOrder;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

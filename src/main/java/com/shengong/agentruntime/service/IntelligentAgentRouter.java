@@ -4,10 +4,13 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shengong.agentruntime.controller.ChatController;
+import com.shengong.agentruntime.collaboration.TaskOrchestrator;
 import com.shengong.agentruntime.core.agent.Agent;
 import com.shengong.agentruntime.llm.LlmClient;
 import com.shengong.agentruntime.model.AgentTask;
 import com.shengong.agentruntime.model.ParamValidationResult;
+import com.shengong.agentruntime.model.collaboration.ExecutionPlan;
+import com.shengong.agentruntime.model.collaboration.MultiAgentTask;
 
 import dev.langchain4j.data.message.ChatMessage;
 import lombok.Data;
@@ -37,6 +40,7 @@ public class IntelligentAgentRouter {
     private final LlmClient llmClient;
     private final ParamExtractionService paramExtractionService;
     private final AgentPromptManager agentPromptManager;
+    private final TaskOrchestrator taskOrchestrator;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -50,6 +54,39 @@ public class IntelligentAgentRouter {
     public AgentTask routeFromUserInput(String userInput, Map<String, Object> context) {
         log.info("智能路由: 分析用户输入...");
 
+        // 【新增】判断是否需要多Agent协同
+        if (taskOrchestrator.needsCollaboration(userInput, context)) {
+            log.info("检测到复杂任务,启用多Agent协同模式");
+
+            try {
+                // 生成执行计划
+                ExecutionPlan plan = taskOrchestrator.decompose(userInput, context);
+
+                // 创建MultiAgentTask
+                MultiAgentTask multiTask = new MultiAgentTask();
+                multiTask.setTaskType("multi_agent_collaboration");
+                multiTask.setDomain("generic");
+                multiTask.setExecutionPlan(plan);
+                multiTask.setExecutionMode(plan.getMode());
+                multiTask.putPayload("originalInput", userInput);
+
+                // 设置上下文
+                if (context != null) {
+                    context.forEach(multiTask::putContext);
+                }
+
+                log.info("创建多Agent任务: planId={}, subTasks={}",
+                        plan.getPlanId(), plan.getTaskCount());
+
+                return multiTask;
+
+            } catch (Exception e) {
+                log.error("创建多Agent任务失败,降级为单Agent模式: {}", e.getMessage());
+                // 降级:继续执行单Agent路由
+            }
+        }
+
+        // 【保留】原有单Agent路由逻辑
         // 1. 获取所有可用的 Agent 信息
         List<Agent> availableAgents = new ArrayList<>(agentRegistry.getAllAgents());
 

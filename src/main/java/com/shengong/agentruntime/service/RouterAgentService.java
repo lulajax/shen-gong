@@ -1,9 +1,11 @@
 package com.shengong.agentruntime.service;
 
+import com.shengong.agentruntime.collaboration.MultiAgentCollaborationService;
 import com.shengong.agentruntime.core.agent.Agent;
 import com.shengong.agentruntime.entity.TaskExecutionEntity;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
+import com.shengong.agentruntime.model.collaboration.MultiAgentTask;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,11 +24,20 @@ public class RouterAgentService {
 
     private final AgentRegistry agentRegistry;
     private final TaskExecutionService taskExecutionService;
+    private final MultiAgentCollaborationService multiAgentCollaborationService;
 
     /**
      * 路由并执行任务
      */
     public AgentResult route(AgentTask task) {
+        // 【新增】处理多Agent任务
+        if (task instanceof MultiAgentTask) {
+            log.info("检测到多Agent任务,委托给协同服务处理: taskId={}", task.getTaskId());
+            MultiAgentTask multiTask = (MultiAgentTask) task;
+            return multiAgentCollaborationService.execute(multiTask);
+        }
+
+        // 【保留】原有单Agent路由逻辑
         String taskType = task.getTaskType();
         String domain = task.getDomain();
 
