@@ -101,6 +101,24 @@ public interface Agent {
     }
 
     /**
+     * 允许使用的工具名称列表
+     *
+     * @return 工具名称列表，为空表示不限制
+     */
+    default List<String> allowedToolNames() {
+        return List.of();
+    }
+
+    /**
+     * 单个 Agent 的最大工具调用步数
+     *
+     * @return 最大步数
+     */
+    default int maxToolCalls() {
+        return 3;
+    }
+
+    /**
      * 验证任务参数是否完整
      * 如果使用了 routeWithParamCollection，此方法会返回验证结果
      *

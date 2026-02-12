@@ -3,7 +3,11 @@ package com.shengong.agentruntime.collaboration;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
 import com.shengong.agentruntime.model.collaboration.*;
+import com.shengong.agentruntime.model.ToolResult;
+import com.shengong.agentruntime.model.ToolExecutionResult;
+import com.shengong.agentruntime.service.AgentRegistry;
 import com.shengong.agentruntime.service.RouterAgentService;
+import com.shengong.agentruntime.service.ToolExecutionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +29,8 @@ import java.util.stream.Collectors;
 public class ExecutionCoordinator {
 
     private final RouterAgentService routerAgentService;
+    private final AgentRegistry agentRegistry;
+    private final ToolExecutionService toolExecutionService;
 
     /**
      * 执行整个执行计划
@@ -206,6 +212,9 @@ public class ExecutionCoordinator {
                 // 创建AgentTask
                 AgentTask agentTask = createAgentTask(task, params, context);
 
+                // 执行工具编排(全局)
+                orchestrateTools(agentTask, task, context);
+
                 // 执行Agent
                 AgentResult result = routerAgentService.route(agentTask);
 
@@ -239,6 +248,50 @@ public class ExecutionCoordinator {
         }
 
         return AgentResult.error("执行失败");
+    }
+
+    private void orchestrateTools(AgentTask agentTask, SubTask task, CollaborationContext context) {
+        Object cachedResult = context.getSharedData(task.getTaskId() + ".toolResult");
+        if (cachedResult instanceof ToolResult toolResult) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> cachedHistory =
+                (List<Map<String, Object>>) context.getSharedData(task.getTaskId() + ".toolCalls");
+            agentTask.putContext("toolOrchestrated", true);
+            agentTask.putContext("toolCalls", cachedHistory != null ? cachedHistory : List.of());
+            agentTask.putContext("toolResult", toolResult.getData());
+            agentTask.putContext("toolResultSuccess", toolResult.isSuccess());
+            agentTask.putContext("toolResultError", toolResult.getError());
+            agentTask.putContext("toolResultTool", toolResult.getToolName());
+            agentTask.putContext("toolResultLatencyMs", toolResult.getLatencyMs());
+            return;
+        }
+
+        agentRegistry.getAgent(task.getAgentName()).ifPresent(agent -> {
+            ToolExecutionResult execution = toolExecutionService.executeToolLoop(
+                agentTask,
+                agent.name(),
+                agent.description(),
+                agentTask.getPayload(),
+                agent.allowedToolNames(),
+                agent.maxToolCalls()
+            );
+
+            if (execution.getLastResult() == null) {
+                return;
+            }
+
+            agentTask.putContext("toolOrchestrated", true);
+            agentTask.putContext("toolCalls", execution.getHistory());
+            agentTask.putContext("toolResult", execution.getLastResult().getData());
+            agentTask.putContext("toolResultSuccess", execution.getLastResult().isSuccess());
+            agentTask.putContext("toolResultError", execution.getLastResult().getError());
+            agentTask.putContext("toolResultTool", execution.getLastResult().getToolName());
+            agentTask.putContext("toolResultLatencyMs", execution.getLastResult().getLatencyMs());
+
+            // 同步到协作上下文共享数据，供后续子任务使用
+            context.putSharedData(task.getTaskId() + ".toolResult", execution.getLastResult());
+            context.putSharedData(task.getTaskId() + ".toolCalls", execution.getHistory());
+        });
     }
 
     /**

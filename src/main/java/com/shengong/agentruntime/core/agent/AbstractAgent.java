@@ -5,6 +5,9 @@ import com.shengong.agentruntime.core.param.AgentParam;
 import com.shengong.agentruntime.core.param.ParamBinder;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
+import com.shengong.agentruntime.model.ToolExecutionResult;
+import com.shengong.agentruntime.model.ToolResult;
+import com.shengong.agentruntime.service.ToolExecutionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -27,6 +30,9 @@ public abstract class AbstractAgent<T> implements Agent {
 
     @Autowired
     protected ParamBinder paramBinder;
+
+    @Autowired
+    protected ToolExecutionService toolExecutionService;
 
     protected AbstractAgent(Class<T> paramType) {
         this.paramType = paramType;
@@ -132,5 +138,63 @@ public abstract class AbstractAgent<T> implements Agent {
     @Override
     public Class<?> getParamType() {
         return paramType;
+    }
+
+    /**
+     * 允许 Agent 限制可用工具列表
+     */
+    public List<String> allowedToolNames() {
+        return List.of();
+    }
+
+    /**
+     * LLM 自主选择工具并调用
+     */
+    protected ToolResult invokeToolWithLlm(AgentTask task, Map<String, Object> inputParams) {
+        if (Boolean.TRUE.equals(task.getContextValue("toolOrchestrated"))) {
+            ToolResult precomputed = buildResultFromContext(task);
+            if (precomputed != null) {
+                return precomputed;
+            }
+        }
+
+        ToolExecutionResult execution = toolExecutionService.executeToolLoop(
+            task,
+            name(),
+            description(),
+            inputParams != null ? inputParams : task.getPayload(),
+            allowedToolNames(),
+            maxToolCalls()
+        );
+
+        ToolResult lastResult = execution.getLastResult();
+        if (lastResult != null) {
+            task.putContext("toolCalls", execution.getHistory());
+            task.putContext("toolResult", lastResult.getData());
+        }
+
+        return lastResult != null ? lastResult : ToolResult.failure("No tool selected by LLM");
+    }
+
+    @Override
+    public int maxToolCalls() {
+        return 3;
+    }
+
+    private ToolResult buildResultFromContext(AgentTask task) {
+        Boolean success = task.getContextValue("toolResultSuccess");
+        String error = task.getContextValue("toolResultError");
+        Map<String, Object> data = task.getContextValue("toolResult");
+        String toolName = task.getContextValue("toolResultTool");
+        Long latencyMs = task.getContextValue("toolResultLatencyMs");
+
+        if (success == null && data == null && error == null) {
+            return null;
+        }
+
+        ToolResult result = success != null && success ? ToolResult.success(data) : ToolResult.failure(error);
+        result.setToolName(toolName);
+        result.setLatencyMs(latencyMs);
+        return result;
     }
 }

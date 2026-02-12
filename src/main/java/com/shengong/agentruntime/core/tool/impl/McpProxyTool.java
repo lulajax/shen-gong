@@ -3,6 +3,8 @@ package com.shengong.agentruntime.core.tool.impl;
 import com.shengong.agentruntime.core.tool.AbstractTool;
 import com.shengong.agentruntime.core.tool.annotation.ToolDefinition;
 import com.shengong.agentruntime.model.ToolResult;
+import com.shengong.agentruntime.schema.Schema;
+import com.shengong.agentruntime.schema.SchemaProperty;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +37,14 @@ public class McpProxyTool extends AbstractTool {
     private int timeout;
 
     private final WebClient.Builder webClientBuilder;
+
+    @Override
+    public Schema inputSchema() {
+        return Schema.object(name() + "_input", "MCP proxy tool input")
+            .addProperty("server", SchemaProperty.of("string", "MCP server name", ""), true)
+            .addProperty("tool", SchemaProperty.of("string", "MCP tool name", ""), true)
+            .addProperty("arguments", SchemaProperty.of("object", "MCP tool arguments", ""), false);
+    }
 
     @Override
     @SuppressWarnings("unchecked")

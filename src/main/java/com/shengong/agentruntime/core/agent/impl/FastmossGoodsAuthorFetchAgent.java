@@ -1,20 +1,18 @@
 package com.shengong.agentruntime.core.agent.impl;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.shengong.agentruntime.core.agent.AbstractAgent;
 import com.shengong.agentruntime.core.agent.annotation.AgentDefinition;
 import com.shengong.agentruntime.core.param.AgentParam;
-import com.shengong.agentruntime.core.tool.Tool;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
 import com.shengong.agentruntime.model.ToolResult;
-import com.shengong.agentruntime.service.ToolRegistry;
 
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -35,12 +33,10 @@ import lombok.extern.slf4j.Slf4j;
 )
 public class FastmossGoodsAuthorFetchAgent extends AbstractAgent<FastmossGoodsAuthorFetchAgent.FastmossGoodsAuthorFetchParams> {
 
-    private final ToolRegistry toolRegistry;
     private final String fastmosssTaskUrl;
 
-    public FastmossGoodsAuthorFetchAgent(ToolRegistry toolRegistry, @Value("${agent-runtime.fastmoss.task-url:http://192.168.84.30:8090/api/fastmoss/rpa/task}") String fastmosssTaskUrl) {
+    public FastmossGoodsAuthorFetchAgent(@Value("${agent-runtime.fastmoss.task-url:http://192.168.84.30:8090/api/fastmoss/rpa/task}") String fastmosssTaskUrl) {
         super(FastmossGoodsAuthorFetchParams.class);
-        this.toolRegistry = toolRegistry;
         this.fastmosssTaskUrl = fastmosssTaskUrl;
     }
 
@@ -58,21 +54,13 @@ public class FastmossGoodsAuthorFetchAgent extends AbstractAgent<FastmossGoodsAu
         log.info("FastmossGoodsAuthorFetchAgent handling task: {}", task.getTaskId());
 
         try {
-            // 调用采集服务
-            Tool liveTool = toolRegistry.getTool("http_client_tool")
-                    .orElse(null);
-
-            if (liveTool == null) {
-                return AgentResult.error("http_client_tool not available");
-            }
-
             String taskId = UUID.randomUUID().toString();
             Map<String, Object> requestBody = Map.of(
                 "region", params.getRegion(),
                 "productCategory", params.getCategory(),
                 "taskId", taskId
             );
-            ToolResult toolResult = liveTool.invoke(Map.of(
+            ToolResult toolResult = invokeToolWithLlm(task, Map.of(
                     "url", fastmosssTaskUrl,
                     "method", "POST",
                     "headers", Map.of("Content-Type", "application/json"),
@@ -88,5 +76,10 @@ public class FastmossGoodsAuthorFetchAgent extends AbstractAgent<FastmossGoodsAu
             log.error("FastmossGoodsAuthorFetch failed: {}", e.getMessage(), e);
             return AgentResult.error("fastmoss采集任务创建失败，错误信息：" + e.getMessage());
         }
+    }
+
+    @Override
+    public List<String> allowedToolNames() {
+        return List.of("http_client_tool");
     }
 }

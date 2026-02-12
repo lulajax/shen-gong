@@ -3,6 +3,8 @@ package com.shengong.agentruntime.core.tool.impl;
 import com.shengong.agentruntime.core.tool.AbstractTool;
 import com.shengong.agentruntime.core.tool.annotation.ToolDefinition;
 import com.shengong.agentruntime.model.ToolResult;
+import com.shengong.agentruntime.schema.Schema;
+import com.shengong.agentruntime.schema.SchemaProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -30,6 +32,22 @@ public class HttpClientTool extends AbstractTool {
     public HttpClientTool(@Value("${agent-runtime.tool.http.timeout:30000}") int timeout) {
         this.timeout = timeout;
         this.webClient = WebClient.builder().build();
+    }
+
+    @Override
+    public Schema inputSchema() {
+        return Schema.object(name() + "_input", "HTTP tool input")
+            .addProperty("url", SchemaProperty.of("string", "目标URL", ""), true)
+            .addProperty("method", SchemaProperty.of("string", "HTTP方法", "GET"), false)
+            .addProperty("headers", SchemaProperty.of("object", "请求头", ""), false)
+            .addProperty("body", SchemaProperty.of("object", "请求体", ""), false);
+    }
+
+    @Override
+    public Schema outputSchema() {
+        return Schema.object(name() + "_output", "HTTP tool output")
+            .addProperty("statusCode", SchemaProperty.of("number", "HTTP状态码", ""), true)
+            .addProperty("body", SchemaProperty.of("string", "响应体", ""), false);
     }
 
     @Override

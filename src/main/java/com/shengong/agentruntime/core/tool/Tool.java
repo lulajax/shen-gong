@@ -1,6 +1,7 @@
 package com.shengong.agentruntime.core.tool;
 
 import com.shengong.agentruntime.model.ToolResult;
+import com.shengong.agentruntime.schema.Schema;
 import java.util.Map;
 
 /**
@@ -33,6 +34,20 @@ public interface Tool {
      */
     default String parametersSchema() {
         return "{}";
+    }
+
+    /**
+     * 输入参数 Schema
+     */
+    default Schema inputSchema() {
+        return Schema.empty(name() + "_input");
+    }
+
+    /**
+     * 输出结果 Schema
+     */
+    default Schema outputSchema() {
+        return Schema.empty(name() + "_output");
     }
 
     /**

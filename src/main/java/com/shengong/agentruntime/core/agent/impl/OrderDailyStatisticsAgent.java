@@ -5,12 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shengong.agentruntime.core.agent.AbstractAgent;
 import com.shengong.agentruntime.core.agent.annotation.AgentDefinition;
 import com.shengong.agentruntime.core.param.AgentParam;
-import com.shengong.agentruntime.core.tool.Tool;
 import com.shengong.agentruntime.llm.LlmClient;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
 import com.shengong.agentruntime.model.ToolResult;
-import com.shengong.agentruntime.service.ToolRegistry;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -36,7 +34,6 @@ import java.util.*;
 )
 public class OrderDailyStatisticsAgent extends AbstractAgent<OrderDailyStatisticsAgent.OrderStatisticsDailyParams> {
 
-    private final ToolRegistry toolRegistry;
     private final ObjectMapper objectMapper;
     private final LlmClient llmClient;
 
@@ -52,9 +49,8 @@ public class OrderDailyStatisticsAgent extends AbstractAgent<OrderDailyStatistic
         "IT", "意大利"
     );
 
-    public OrderDailyStatisticsAgent(ToolRegistry toolRegistry, LlmClient llmClient) {
+    public OrderDailyStatisticsAgent(LlmClient llmClient) {
         super(OrderStatisticsDailyParams.class);
-        this.toolRegistry = toolRegistry;
         this.objectMapper = new ObjectMapper();
         this.llmClient = llmClient;
     }
@@ -87,13 +83,9 @@ public class OrderDailyStatisticsAgent extends AbstractAgent<OrderDailyStatistic
             // 构建 HTTP 请求参数
             String url = buildRequestUrl(dateRange, regions);
 
-            // 调用 HttpClientTool
-            Tool httpTool = toolRegistry.getTool("http_client_tool")
-                    .orElseThrow(() -> new RuntimeException("HTTP client tool not available"));
-
-            ToolResult toolResult = httpTool.invoke(Map.of(
-                    "url", url,
-                    "method", "GET"
+            ToolResult toolResult = invokeToolWithLlm(task, Map.of(
+                "url", url,
+                "method", "GET"
             ));
 
             if (!toolResult.isSuccess()) {
@@ -239,5 +231,10 @@ public class OrderDailyStatisticsAgent extends AbstractAgent<OrderDailyStatistic
         private int creatorCount;        // 达人订单数
         private int selfSellCount;       // 自营订单数
         private int productCardCount;    // 商品卡订单数
+    }
+
+    @Override
+    public List<String> allowedToolNames() {
+        return List.of("http_client_tool");
     }
 }

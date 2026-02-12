@@ -3,15 +3,14 @@ package com.shengong.agentruntime.core.agent.impl;
 import com.shengong.agentruntime.core.agent.AbstractAgent;
 import com.shengong.agentruntime.core.agent.annotation.AgentDefinition;
 import com.shengong.agentruntime.core.param.AgentParam;
-import com.shengong.agentruntime.core.tool.Tool;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
 import com.shengong.agentruntime.model.ToolResult;
-import com.shengong.agentruntime.service.ToolRegistry;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,11 +30,8 @@ import java.util.Map;
 )
 public class LiveDataFetchAgent extends AbstractAgent<LiveDataFetchAgent.LiveDataFetchParams> {
 
-    private final ToolRegistry toolRegistry;
-
-    public LiveDataFetchAgent(ToolRegistry toolRegistry) {
+    public LiveDataFetchAgent() {
         super(LiveDataFetchParams.class);
-        this.toolRegistry = toolRegistry;
     }
 
     @Data
@@ -56,17 +52,9 @@ public class LiveDataFetchAgent extends AbstractAgent<LiveDataFetchAgent.LiveDat
             Map<String, Object> timeRange = params.getTimeRange();
             Map<String, Object> filters = params.getFilters();
 
-            // 调用直播数据 Tool
-            Tool liveTool = toolRegistry.getTool("live_data_tool")
-                    .orElse(null);
-
-            if (liveTool == null) {
-                return AgentResult.error("Live data tool not available");
-            }
-
-            ToolResult toolResult = liveTool.invoke(Map.of(
-                    "timeRange", timeRange,
-                    "filters", filters != null ? filters : Map.of()
+            ToolResult toolResult = invokeToolWithLlm(task, Map.of(
+                "timeRange", timeRange,
+                "filters", filters != null ? filters : Map.of()
             ));
 
             if (!toolResult.isSuccess()) {
@@ -82,5 +70,10 @@ public class LiveDataFetchAgent extends AbstractAgent<LiveDataFetchAgent.LiveDat
             log.error("LiveDataFetchAgent failed: {}", e.getMessage(), e);
             return AgentResult.error("Data fetch failed: " + e.getMessage());
         }
+    }
+
+    @Override
+    public List<String> allowedToolNames() {
+        return List.of("live_data_tool");
     }
 }

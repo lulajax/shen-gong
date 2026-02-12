@@ -3,15 +3,14 @@ package com.shengong.agentruntime.core.agent.impl;
 import com.shengong.agentruntime.core.agent.AbstractAgent;
 import com.shengong.agentruntime.core.agent.annotation.AgentDefinition;
 import com.shengong.agentruntime.core.param.AgentParam;
-import com.shengong.agentruntime.core.tool.Tool;
 import com.shengong.agentruntime.model.AgentResult;
 import com.shengong.agentruntime.model.AgentTask;
 import com.shengong.agentruntime.model.ToolResult;
-import com.shengong.agentruntime.service.ToolRegistry;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,11 +30,8 @@ import java.util.Map;
 )
 public class OrderDataAgent extends AbstractAgent<OrderDataAgent.OrderDataParams> {
 
-    private final ToolRegistry toolRegistry;
-
-    public OrderDataAgent(ToolRegistry toolRegistry) {
+    public OrderDataAgent() {
         super(OrderDataParams.class);
-        this.toolRegistry = toolRegistry;
     }
 
     @Data
@@ -58,17 +54,9 @@ public class OrderDataAgent extends AbstractAgent<OrderDataAgent.OrderDataParams
                 queryType = "all";
             }
 
-            // 调用订单数据 Tool
-            Tool orderTool = toolRegistry.getTool("order_data_tool")
-                    .orElse(null);
-
-            if (orderTool == null) {
-                return AgentResult.error("Order data tool not available");
-            }
-
-            ToolResult toolResult = orderTool.invoke(Map.of(
-                    "timeRange", timeRange,
-                    "queryType", queryType
+            ToolResult toolResult = invokeToolWithLlm(task, Map.of(
+                "timeRange", timeRange,
+                "queryType", queryType
             ));
 
             if (!toolResult.isSuccess()) {
@@ -83,5 +71,10 @@ public class OrderDataAgent extends AbstractAgent<OrderDataAgent.OrderDataParams
             log.error("OrderDataAgent failed: {}", e.getMessage(), e);
             return AgentResult.error("Data fetch failed: " + e.getMessage());
         }
+    }
+
+    @Override
+    public List<String> allowedToolNames() {
+        return List.of("order_data_tool");
     }
 }

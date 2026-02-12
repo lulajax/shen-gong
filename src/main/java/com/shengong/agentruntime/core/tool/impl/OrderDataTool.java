@@ -3,6 +3,8 @@ package com.shengong.agentruntime.core.tool.impl;
 import com.shengong.agentruntime.core.tool.AbstractTool;
 import com.shengong.agentruntime.core.tool.annotation.ToolDefinition;
 import com.shengong.agentruntime.model.ToolResult;
+import com.shengong.agentruntime.schema.Schema;
+import com.shengong.agentruntime.schema.SchemaProperty;
 import lombok.extern.slf4j.Slf4j;
 import java.util.*;
 
@@ -20,6 +22,20 @@ import java.util.*;
         category = "data-source"
 )
 public class OrderDataTool extends AbstractTool {
+
+    @Override
+    public Schema inputSchema() {
+        return Schema.object(name() + "_input", "Order data tool input")
+            .addProperty("timeRange", SchemaProperty.of("object", "时间范围", ""), true)
+            .addProperty("queryType", SchemaProperty.of("string", "查询类型", "all"), false);
+    }
+
+    @Override
+    public Schema outputSchema() {
+        return Schema.object(name() + "_output", "Order data tool output")
+            .addProperty("orderList", SchemaProperty.of("array", "订单列表", ""), true)
+            .addProperty("totalCount", SchemaProperty.of("number", "订单总数", ""), false);
+    }
 
     @Override
     @SuppressWarnings("unchecked")
