@@ -1,7 +1,8 @@
 package com.shengong.agentruntime.llm;
 
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -21,11 +22,11 @@ import java.util.List;
 @Component
 public class LlmClient {
 
-    private final ChatLanguageModel model;
+    private final ChatModel model;
     private final String modelProvider;
 
     public LlmClient(
-            ChatLanguageModel model,
+            ChatModel model,
             @Value("${langchain4j.model.provider:open-ai}") String modelProvider
     ) {
         this.model = model;
@@ -47,8 +48,8 @@ public class LlmClient {
 
             messages.add(UserMessage.from(userMessage));
 
-            dev.langchain4j.model.output.Response<AiMessage> response = model.generate(messages);
-            String result = response.content().text();
+            ChatResponse response = model.chat(messages);
+            String result = response.aiMessage() != null ? response.aiMessage().text() : "";
 
             log.debug("LLM response received: length={}", result.length());
             return result;
@@ -74,8 +75,8 @@ public class LlmClient {
      */
     public String chatMultimodal(List<ChatMessage> messages) {
         try {
-            dev.langchain4j.model.output.Response<AiMessage> response = model.generate(messages);
-            String result = response.content().text();
+            ChatResponse response = model.chat(messages);
+            String result = response.aiMessage() != null ? response.aiMessage().text() : "";
 
             log.debug("LLM multimodal response received: length={}", result.length());
             return result;

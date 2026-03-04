@@ -1,0 +1,8 @@
+roles:
+  - roleKey: ecom_assistant
+    allowedCapabilities:
+      - order.daily_statistics
+    deniedCapabilities: []
+    dataScope:
+      level: ecommerce
+      name: 电商小助理

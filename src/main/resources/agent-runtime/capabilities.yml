@@ -1,0 +1,97 @@
+capabilities:
+  - capabilityKey: order.daily_statistics
+    description: 查询指定地区与日期范围的订单每日统计
+    systemPrompt: 你是订单每日统计能力，返回结构化数据与 Markdown 表格。
+    executionType: local
+    allowedTools:
+      - order.daily.statistics.fetch
+    inputSchema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      required:
+        - dateRange
+        - regions
+      additionalProperties: false
+      properties:
+        dateRange:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: string
+        regions:
+          type: array
+          minItems: 1
+          items:
+            type: string
+    outputSchema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      required:
+        - formattedData
+      additionalProperties: true
+      properties:
+        formattedData:
+          type: string
+        rawData:
+          type: array
+        statusCode:
+          type: integer
+    config: {}
+  - capabilityKey: common.table_markdown_render
+    description: 将结构化 columns + rows 数据渲染为 Markdown 表格
+    systemPrompt: 你是通用表格渲染能力，按固定列顺序输出 Markdown 表格。
+    executionType: local
+    allowedTools: []
+    inputSchema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      required:
+        - columns
+        - rows
+      additionalProperties: false
+      properties:
+        columns:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - key
+              - header
+            additionalProperties: false
+            properties:
+              key:
+                type: string
+              header:
+                type: string
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        options:
+          type: object
+          additionalProperties: false
+          properties:
+            useLlm:
+              type: boolean
+            title:
+              type: string
+            maxRows:
+              type: integer
+              minimum: 1
+    outputSchema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      required:
+        - formattedData
+      additionalProperties: false
+      properties:
+        formattedData:
+          type: string
+        meta:
+          type: object
+          additionalProperties: true
+    config:
+      llmEnabled: false

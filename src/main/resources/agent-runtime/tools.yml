@@ -1,0 +1,29 @@
+tools:
+  - toolKey: order.daily.statistics.fetch
+    adapterType: http
+    inputSchema:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      required:
+        - dateRange
+        - regions
+      additionalProperties: false
+      properties:
+        dateRange:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            type: string
+        regions:
+          type: array
+          minItems: 1
+          items:
+            type: string
+    defaults: {}
+    config:
+      url: https://service-wehub.youliaolive.cn/api/tiktok-seller-order/statistics/daily-by-type
+      method: GET
+      queryParamKeys:
+        - regions
+        - dateRange

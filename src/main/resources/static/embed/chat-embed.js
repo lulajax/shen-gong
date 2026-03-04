@@ -330,13 +330,18 @@ async function sendMessage() {
     try {
         // 构建请求体
         const requestBody = {
+            role: 'ecom_assistant',
             userId: userId,
             sessionId: sessionId,
-            messages: conversationMessages
+            inputText: messageText,
+            context: {
+                role: 'ecom_assistant',
+                messages: conversationMessages
+            }
         };
 
         // 调用后端API（使用动态 API 地址）
-        const apiUrl = `${embedConfig.apiBase || ''}/api/v1/chat/send`;
+        const apiUrl = `${embedConfig.apiBase || ''}/api/v2/role-agent/send`;
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
@@ -356,8 +361,8 @@ async function sendMessage() {
         hideLoading();
 
         // 处理响应
-        if (data.success) {
-            const responseText = data.data?.result || data.message || '抱歉，我没有理解您的意思。';
+        if (data.success || data.status === 'partial') {
+            const responseText = data.message || data.data?.result || '抱歉，我没有理解您的意思。';
 
             const botMessage = {
                 role: 'assistant',

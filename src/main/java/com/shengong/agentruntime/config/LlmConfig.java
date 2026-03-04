@@ -1,6 +1,6 @@
 package com.shengong.agentruntime.config;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +38,7 @@ public class LlmConfig {
      */
     @Bean
     @ConditionalOnProperty(name = "langchain4j.model.provider", havingValue = "openai")
-    public ChatLanguageModel openAiChatModel(
+    public ChatModel openAiChatModel(
             @Value("${langchain4j.open-ai.api-key}") String apiKey,
             @Value("${langchain4j.open-ai.model-name:gpt-4o}") String modelName,
             @Value("${langchain4j.open-ai.temperature:0.7}") Double temperature,
@@ -47,7 +47,7 @@ public class LlmConfig {
     ) {
         configureSystemProxy();
 
-        ChatLanguageModel model = OpenAiChatModel.builder()
+        ChatModel model = OpenAiChatModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)
                 .temperature(temperature)
@@ -68,7 +68,7 @@ public class LlmConfig {
      */
     @Bean
     @ConditionalOnProperty(name = "langchain4j.model.provider", havingValue = "gemini", matchIfMissing = true)
-    public ChatLanguageModel geminiChatModel(
+    public ChatModel geminiChatModel(
             @Value("${langchain4j.google-ai-gemini.api-key}") String apiKey,
             @Value("${langchain4j.google-ai-gemini.model-name:gemini-2.5-flash}") String modelName,
             @Value("${langchain4j.google-ai-gemini.temperature:0.7}") Double temperature,
@@ -77,7 +77,7 @@ public class LlmConfig {
     ) {
         configureSystemProxy();
 
-        ChatLanguageModel model = GoogleAiGeminiChatModel.builder()
+        ChatModel model = GoogleAiGeminiChatModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)
                 .temperature(temperature)

@@ -5,17 +5,6 @@ spring:
   profiles:
     active: dev
 
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
-        format_sql: true
-        use_sql_comments: true
-    open-in-view: false
-
   cache:
     type: redis
     redis:
@@ -111,7 +100,6 @@ logging:
     com.shengong: DEBUG
     dev.langchain4j: DEBUG
     org.springframework.web: INFO
-    org.hibernate: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
