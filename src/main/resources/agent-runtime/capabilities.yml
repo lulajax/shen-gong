@@ -94,4 +94,4 @@ capabilities:
           type: object
           additionalProperties: true
     config:
-      llmEnabled: false
+      llmEnabled: true

@@ -1,4 +1,4 @@
-package com.shengong.agentruntime.service.runtime.capability;
+package com.shengong.agentruntime.service.runtime.capability.executor;
 
 import com.shengong.agentruntime.core.capability.CapabilityRuntime;
 import com.shengong.agentruntime.model.runtime.CapabilityResult;

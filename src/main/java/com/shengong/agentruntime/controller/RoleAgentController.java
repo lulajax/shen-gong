@@ -99,6 +99,9 @@ public class RoleAgentController {
         if (role == null || role.isBlank()) {
             role = "ecom_assistant";
         }
+        if ("电商小助理".equals(role)) {
+            return "ecom_assistant";
+        }
         return role;
     }
 

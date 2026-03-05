@@ -25,16 +25,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class OrderDailyStatisticsCapabilityAgent implements CapabilityAgent {
 
-    private static final Map<String, String> REGION_NAME_MAP = Map.of(
-            "GB", "英国",
-            "US", "美国",
-            "ES", "西班牙",
-            "DE", "德国",
-            "IE", "爱尔兰",
-            "FR", "法国",
-            "IT", "意大利"
-    );
-
     private final ObjectMapper objectMapper;
 
     @Override
@@ -122,7 +112,6 @@ public class OrderDailyStatisticsCapabilityAgent implements CapabilityAgent {
         List<Map<String, Object>> rows = new ArrayList<>();
         for (Map<String, Object> row : dataList) {
             String region = String.valueOf(row.getOrDefault("saleRegion", ""));
-            String regionName = REGION_NAME_MAP.getOrDefault(region, region);
             String date = String.valueOf(row.getOrDefault("statDate", ""));
             int sampleCount = numberInt(row.get("sampleCount"));
             int creatorCount = numberInt(row.get("creatorCount"));
@@ -131,7 +120,7 @@ public class OrderDailyStatisticsCapabilityAgent implements CapabilityAgent {
             int realOrders = creatorCount + selfSellCount + productCardCount;
 
             Map<String, Object> normalizedRow = new HashMap<>();
-            normalizedRow.put("region", regionName);
+            normalizedRow.put("region", region);
             normalizedRow.put("date", date);
             normalizedRow.put("sampleCount", sampleCount);
             normalizedRow.put("creatorCount", creatorCount);

@@ -9,7 +9,7 @@ import com.shengong.agentruntime.model.runtime.RoleRequest;
 import com.shengong.agentruntime.model.spec.CapabilitySpec;
 import com.shengong.agentruntime.model.spec.RolePolicy;
 import com.shengong.agentruntime.service.runtime.argument.CapabilityArgExtractor;
-import com.shengong.agentruntime.service.runtime.capability.CapabilityExecutor;
+import com.shengong.agentruntime.service.runtime.capability.executor.CapabilityExecutor;
 import com.shengong.agentruntime.service.runtime.registry.DynamicSpecRegistry;
 import com.shengong.agentruntime.service.runtime.tool.ToolExecutor;
 import com.shengong.agentruntime.service.runtime.validation.JsonSchemaValidationService;
